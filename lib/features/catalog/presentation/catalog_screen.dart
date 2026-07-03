@@ -3,6 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
 
+const _primary = Color(0xFF2563EB);
+const _deepTeal = Color(0xFF155E75);
+const _danger = Color(0xFFE85D4F);
+const _ink = Color(0xFF0F172A);
+const _muted = Color(0xFF64748B);
+const _line = Color(0xFFE5EAF1);
+const _surface = Colors.white;
+const _page = Color(0xFFF4F7FB);
+
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 
@@ -19,7 +28,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       label: 'Alim.',
       value: 'Alimentaire',
       icon: Icons.local_dining_outlined,
-      color: Color(0xFF1976D2),
+      color: _primary,
     ),
     _Category(
       label: 'Cosm.',
@@ -37,7 +46,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       label: 'Promo',
       value: 'Promo',
       icon: Icons.local_offer_outlined,
-      color: Color(0xFFEF334C),
+      color: _danger,
     ),
   ];
 
@@ -116,18 +125,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final filteredProducts = _filterProducts(activeCategory.value);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FB),
+      backgroundColor: _page,
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Column(
                   children: [
                     _Header(onLogout: () => _logout(context)),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     const _SearchBar(),
                     const SizedBox(height: 16),
                     _CategorySelector(
@@ -152,7 +161,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 96),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 112),
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.crossAxisExtent;
@@ -162,7 +171,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     itemCount: filteredProducts.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
-                      childAspectRatio: 0.73,
+                      childAspectRatio: 0.71,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 14,
                     ),
@@ -205,43 +214,47 @@ class _Header extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFF4A96E2),
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(16),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [_deepTeal, _primary],
+            ),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x244A96E2),
-                blurRadius: 16,
-                offset: Offset(0, 8),
+                color: Color(0x242563EB),
+                blurRadius: 20,
+                offset: Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(Icons.home_rounded, color: Colors.white, size: 23),
+          child: const Icon(Icons.home_rounded, color: Colors.white, size: 25),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Valomnia',
+                'Valomnia B2B',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 20,
+                  color: _ink,
+                  fontSize: 19,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               SizedBox(height: 2),
               Text(
-                'Catalogue B2B',
+                'Catalogue commercial',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Color(0xFF64748B),
+                  color: _muted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -273,31 +286,34 @@ class _SearchBar extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5EAF1)),
+          child: TextField(
+            textInputAction: TextInputAction.search,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
             ),
-            child: const Row(
-              children: [
-                SizedBox(width: 14),
-                Icon(Icons.search_rounded, size: 21, color: Color(0xFF64748B)),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Rechercher produits, SKU...',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+            decoration: InputDecoration(
+              hintText: 'Rechercher produits, SKU...',
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                size: 21,
+                color: _muted,
+              ),
+              hintStyle: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 15,
+              ),
+              filled: true,
+              fillColor: _surface,
+              border: _inputBorder(_line),
+              enabledBorder: _inputBorder(_line),
+              focusedBorder: _inputBorder(_primary, width: 1.6),
             ),
           ),
         ),
@@ -335,7 +351,7 @@ class _CategorySelector extends StatelessWidget {
     return Column(
       children: [
         ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: SizedBox(
             height: 56,
             child: Row(
@@ -355,8 +371,11 @@ class _CategorySelector extends StatelessWidget {
         Container(
           height: 32,
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE5EAF1)),
+            color: _surface,
+            border: Border.all(color: _line),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(12),
+            ),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x080F172A),
@@ -448,7 +467,7 @@ class _SubCategoryBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xFF1976D2) : Colors.white,
+      color: selected ? _primary : _surface,
       child: InkWell(
         onTap: onPressed,
         child: Center(
@@ -485,7 +504,7 @@ class _SectionHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Color(0xFF111827),
+                color: _ink,
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
               ),
@@ -496,7 +515,7 @@ class _SectionHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF64748B),
+              color: _muted,
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
             ),
@@ -516,14 +535,14 @@ class _ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5EAF1)),
+        color: _surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _line),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x120F172A),
+            blurRadius: 20,
+            offset: Offset(0, 12),
           ),
         ],
       ),
@@ -531,9 +550,17 @@ class _ProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _ProductVisual(product: product)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _ProductVisual(product: product),
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -542,7 +569,7 @@ class _ProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF1F2937),
+                    color: _ink,
                     fontSize: 13,
                     height: 1.18,
                     fontWeight: FontWeight.w900,
@@ -557,7 +584,7 @@ class _ProductCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0xFF4A96E2),
+                          color: _primary,
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
                         ),
@@ -569,9 +596,11 @@ class _ProductCard extends StatelessWidget {
                         onPressed: () {},
                         style: FilledButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          backgroundColor: const Color(0xFF4A96E2),
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: const Icon(Icons.add_rounded, size: 20),
@@ -635,7 +664,7 @@ class _ProductVisual extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444),
+                color: const Color(0xFFEF2F2F),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -661,13 +690,14 @@ class _CatalogNavigationBar extends StatelessWidget {
     return NavigationBar(
       selectedIndex: 0,
       height: 72,
-      backgroundColor: Colors.white,
-      indicatorColor: const Color(0x1A4A96E2),
+      elevation: 0,
+      backgroundColor: _surface,
+      indicatorColor: const Color(0x1A2563EB),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home_rounded),
+          selectedIcon: Icon(Icons.home_rounded, color: _primary),
           label: 'Accueil',
         ),
 
@@ -678,18 +708,18 @@ class _CatalogNavigationBar extends StatelessWidget {
           ),
           selectedIcon: Badge(
             label: Text('3'),
-            child: Icon(Icons.shopping_cart_rounded),
+            child: Icon(Icons.shopping_cart_rounded, color: _primary),
           ),
           label: 'Panier',
         ),
         NavigationDestination(
           icon: Icon(Icons.receipt_long_outlined),
-          selectedIcon: Icon(Icons.receipt_long_rounded),
+          selectedIcon: Icon(Icons.receipt_long_rounded, color: _primary),
           label: 'Commandes',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline_rounded),
-          selectedIcon: Icon(Icons.person_rounded),
+          selectedIcon: Icon(Icons.person_rounded, color: _primary),
           label: 'Profil',
         ),
       ],
@@ -720,15 +750,11 @@ class _RoundIconButton extends StatelessWidget {
         child: IconButton(
           onPressed: onPressed,
           style: IconButton.styleFrom(
-            backgroundColor: filled ? const Color(0xFF111827) : Colors.white,
+            backgroundColor: filled ? _ink : _surface,
             foregroundColor: filled ? Colors.white : const Color(0xFF334155),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              side: BorderSide(
-                color: filled
-                    ? const Color(0xFF111827)
-                    : const Color(0xFFE5EAF1),
-              ),
+              side: BorderSide(color: filled ? _ink : _line),
             ),
           ),
           icon: Icon(icon, size: 21),
@@ -755,6 +781,13 @@ class _BannerCircle extends StatelessWidget {
       ),
     );
   }
+}
+
+OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
+  return OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(color: color, width: width),
+  );
 }
 
 class _Category {
