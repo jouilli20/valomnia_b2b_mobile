@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -5,7 +6,11 @@ import 'package:valomnia_b2b_mobile/main.dart';
 
 void main() {
   testWidgets('renders login screen', (WidgetTester tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+
     await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.pump();
 
     expect(find.text('Valomnia B2B'), findsOneWidget);
     expect(find.text('Connectez-vous à votre compte'), findsOneWidget);

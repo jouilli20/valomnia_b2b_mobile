@@ -37,9 +37,6 @@ class AuthNotifier extends Notifier<AsyncValue<LoginResponse?>> {
 
       await SecureStorageService.saveOrganisation(organisation);
 
-      final session = await SecureStorageService.getSession();
-
-      print(session);
       state = AsyncValue.data(response);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);

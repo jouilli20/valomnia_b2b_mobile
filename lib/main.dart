@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/presentation/splash_screen.dart';
-import 'features/auth/presentation/login_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
