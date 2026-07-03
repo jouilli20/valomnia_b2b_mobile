@@ -12,12 +12,17 @@ class SecureStorageService {
   static const String usernameKey = 'username';
   static const String organisationKey = 'organisation';
 
-  static Future<void> saveSession(
-      Map<String, dynamic> session,
-      ) async {
+  static Future<void> saveSession(Map<String, dynamic> session) async {
+    await _storage.write(key: sessionKey, value: jsonEncode(session));
+
     await _storage.write(
-      key: sessionKey,
-      value: jsonEncode(session),
+      key: customerIdKey,
+      value: session['customerId']?.toString(),
+    );
+
+    await _storage.write(
+      key: 'token',
+      value: session['token']?.toString(),
     );
   }
 

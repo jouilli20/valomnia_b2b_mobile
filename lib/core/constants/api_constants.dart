@@ -5,7 +5,7 @@ class ApiConstants {
   static const String baseUrl = 'https://api.valomnia.com/api/';
 
   /// Tenant Base URL
-  static const String tenantBaseUrl = 'https://api.valomnia.com/api/';
+  static const String tenantBaseUrl = 'https://agro.valomnia.com';
 
   /// Headers
   static const String jsonContentType = 'application/json';
