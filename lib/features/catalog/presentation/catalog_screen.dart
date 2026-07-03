@@ -12,12 +12,40 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   int _selectedCategory = 0;
+  int _selectedSubCategory = 0;
 
   static const List<_Category> _categories = [
-    _Category('Tous', Icons.grid_view_rounded),
-    _Category('Alimentaire', Icons.local_dining_outlined),
-    _Category('Boissons', Icons.water_drop_outlined),
-    _Category('Promo', Icons.local_offer_outlined),
+    _Category(
+      label: 'Alim.',
+      value: 'Alimentaire',
+      icon: Icons.local_dining_outlined,
+      color: Color(0xFF1976D2),
+    ),
+    _Category(
+      label: 'Cosm.',
+      value: 'Cosmetique',
+      icon: Icons.spa_outlined,
+      color: Color(0xFF8E44AD),
+    ),
+    _Category(
+      label: 'Eau',
+      value: 'Boissons',
+      icon: Icons.water_drop_outlined,
+      color: Color(0xFF1FA06F),
+    ),
+    _Category(
+      label: 'Promo',
+      value: 'Promo',
+      icon: Icons.local_offer_outlined,
+      color: Color(0xFFEF334C),
+    ),
+  ];
+
+  static const List<String> _subCategories = [
+    'Tous',
+    'Promos',
+    'Packs',
+    'Gratuites',
   ];
 
   static const List<_Product> _products = [
@@ -84,16 +112,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = _selectedCategory == 0
-        ? _products
-        : _products
-              .where(
-                (product) =>
-                    product.category == _categories[_selectedCategory].label ||
-                    _categories[_selectedCategory].label == 'Promo' &&
-                        product.badge != null,
-              )
-              .toList();
+    final activeCategory = _categories[_selectedCategory];
+    final filteredProducts = _filterProducts(activeCategory.value);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FB),
@@ -109,14 +129,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     _Header(onLogout: () => _logout(context)),
                     const SizedBox(height: 18),
                     const _SearchBar(),
-                    const SizedBox(height: 14),
-                    const _PromoBanner(),
                     const SizedBox(height: 16),
                     _CategorySelector(
                       categories: _categories,
+                      subCategories: _subCategories,
                       selectedIndex: _selectedCategory,
+                      selectedSubIndex: _selectedSubCategory,
                       onSelected: (index) {
-                        setState(() => _selectedCategory = index);
+                        setState(() {
+                          _selectedCategory = index;
+                          _selectedSubCategory = 0;
+                        });
+                      },
+                      onSubSelected: (index) {
+                        setState(() => _selectedSubCategory = index);
                       },
                     ),
                     const SizedBox(height: 14),
@@ -152,6 +178,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
       bottomNavigationBar: const _CatalogNavigationBar(),
     );
+  }
+
+  List<_Product> _filterProducts(String category) {
+    final productsByCategory = category == 'Promo'
+        ? _products.where((product) => product.badge != null)
+        : _products.where((product) => product.category == category);
+
+    if (_selectedSubCategory == 1) {
+      return productsByCategory
+          .where((product) => product.badge != null)
+          .toList();
+    }
+
+    return productsByCategory.toList();
   }
 }
 
@@ -277,164 +317,156 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _PromoBanner extends StatelessWidget {
-  const _PromoBanner();
+class _CategorySelector extends StatelessWidget {
+  const _CategorySelector({
+    required this.categories,
+    required this.subCategories,
+    required this.selectedIndex,
+    required this.selectedSubIndex,
+    required this.onSelected,
+    required this.onSubSelected,
+  });
+
+  final List<_Category> categories;
+  final List<String> subCategories;
+  final int selectedIndex;
+  final int selectedSubIndex;
+  final ValueChanged<int> onSelected;
+  final ValueChanged<int> onSubSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 122,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F766E), Color(0xFF4A96E2), Color(0xFFF59E0B)],
-          stops: [0, 0.62, 1],
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x204A96E2),
-            blurRadius: 22,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            top: -18,
-            child: _BannerCircle(size: 98, opacity: 0.18),
-          ),
-          Positioned(
-            right: 22,
-            bottom: -18,
-            child: _BannerCircle(size: 84, opacity: 0.22),
-          ),
-          Positioned(
-            right: 34,
-            top: 29,
-            child: Transform.rotate(
-              angle: -0.2,
-              child: const Icon(
-                Icons.shopping_basket_rounded,
-                color: Colors.white,
-                size: 58,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 138, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+          child: SizedBox(
+            height: 56,
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x26FFFFFF),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Text(
-                    'Offre semaine',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
+                for (var index = 0; index < categories.length; index++)
+                  Expanded(
+                    child: _CategoryBlock(
+                      category: categories[index],
+                      selected: selectedIndex == index,
+                      onPressed: () => onSelected(index),
                     ),
                   ),
-                ),
-                const SizedBox(height: 9),
-                const Text(
-                  'Produits frais',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
+              ],
+            ),
+          ),
+        ),
+        Container(
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFE5EAF1)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x080F172A),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              for (var index = 0; index < subCategories.length; index++)
+                Expanded(
+                  child: _SubCategoryBlock(
+                    label: subCategories[index],
+                    selected: selectedSubIndex == index,
+                    onPressed: () => onSubSelected(index),
                   ),
                 ),
-                const SizedBox(height: 3),
-                const Text(
-                  'Jusqu a -25%',
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryBlock extends StatelessWidget {
+  const _CategoryBlock({
+    required this.category,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final _Category category;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: category.color,
+      child: InkWell(
+        onTap: onPressed,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(category.icon, color: Colors.white, size: 17),
+                const SizedBox(height: 4),
+                Text(
+                  category.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            if (selected)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(height: 4, color: Colors.white),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _CategorySelector extends StatelessWidget {
-  const _CategorySelector({
-    required this.categories,
-    required this.selectedIndex,
-    required this.onSelected,
+class _SubCategoryBlock extends StatelessWidget {
+  const _SubCategoryBlock({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
   });
 
-  final List<_Category> categories;
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final isSelected = selectedIndex == index;
-
-          return ChoiceChip(
-            selected: isSelected,
-            showCheckmark: false,
-            avatar: Icon(
-              category.icon,
-              size: 17,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
-            ),
-            label: Text(category.label),
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF475569),
-              fontSize: 12.5,
+    return Material(
+      color: selected ? const Color(0xFF1976D2) : Colors.white,
+      child: InkWell(
+        onTap: onPressed,
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF475569),
+              fontSize: 10.5,
               fontWeight: FontWeight.w800,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-            selectedColor: const Color(0xFF4A96E2),
-            backgroundColor: Colors.white,
-            side: BorderSide(
-              color: isSelected
-                  ? const Color(0xFF4A96E2)
-                  : const Color(0xFFE2E8F0),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-            onSelected: (_) => onSelected(index),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -734,10 +766,17 @@ class _BannerCircle extends StatelessWidget {
 }
 
 class _Category {
-  const _Category(this.label, this.icon);
+  const _Category({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
+  final String value;
   final IconData icon;
+  final Color color;
 }
 
 class _Product {
