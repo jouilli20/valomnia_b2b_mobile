@@ -63,129 +63,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF4F7FB),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 32,
+                  minHeight: constraints.maxHeight - 36,
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 430),
+                    constraints: const BoxConstraints(maxWidth: 460),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const _BrandHeader(),
-                          const SizedBox(height: 28),
-                          const Text(
-                            'Veuillez saisir vos coordonnées pour\naccéder à votre compte de vente en gros',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFF74747F),
-                              fontSize: 17,
-                              height: 1.35,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          _LoginField(
-                            controller: _organisationController,
-                            hintText: 'Votre Organisation',
-                            textInputAction: TextInputAction.next,
-                            validatorMessage: 'Organisation obligatoire',
+                          const _HeroHeader(),
+                          const SizedBox(height: 22),
+                          _LoginPanel(
+                            isLoading: isLoading,
+                            organisationController: _organisationController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            obscurePassword: _obscurePassword,
+                            onTogglePassword: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            onSubmit: _submitLogin,
                           ),
                           const SizedBox(height: 16),
-                          _LoginField(
-                            controller: _emailController,
-                            hintText: 'Adresse e-mail',
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            validatorMessage: 'Adresse e-mail obligatoire',
-                          ),
-                          const SizedBox(height: 16),
-                          _LoginField(
-                            controller: _passwordController,
-                            hintText: 'Mot de passe',
-                            obscureText: _obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            validatorMessage: 'Mot de passe obligatoire',
-                            onFieldSubmitted: (_) =>
-                                isLoading ? null : _submitLogin(),
-                            suffixIcon: IconButton(
-                              tooltip: _obscurePassword
-                                  ? 'Afficher le mot de passe'
-                                  : 'Masquer le mot de passe',
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: const Color(0xFF74747F),
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF4E8FCE),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              child: const Text('Mot de passe oublié ?'),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            height: 60,
-                            child: ElevatedButton(
-                              onPressed: isLoading ? null : _submitLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4A96E2),
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: const Color(
-                                  0xFF9CC5ED,
-                                ),
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              child: isLoading
-                                  ? const SizedBox.square(
-                                      dimension: 26,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 3,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text('Se connecter'),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
                           const _SupportPhone(),
                         ],
                       ),
@@ -201,48 +113,279 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
+class _HeroHeader extends StatelessWidget {
+  const _HeroHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: const Color(0xFF4C91D9),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1F000000),
-                blurRadius: 10,
-                offset: Offset(0, 5),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 26),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF155E75), Color(0xFF2563EB), Color(0xFFE85D4F)],
+          stops: [0, 0.68, 1],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x242563EB),
+            blurRadius: 28,
+            offset: Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: Color(0xFF2563EB),
+                  size: 31,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Valomnia B2B',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Espace commercial',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Color(0xD9FFFFFF),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.inventory_2_outlined,
-            color: Colors.white,
-            size: 31,
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Flexible(
-          child: Text(
-            'Valomnia B2B',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 28),
+          const Text(
+            'Connectez-vous à votre compte',
             style: TextStyle(
-              color: Color(0xFF11111F),
-              fontSize: 27,
-              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              fontSize: 30,
+              height: 1.08,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          const Text(
+            'Accédez rapidement aux commandes, clients et opérations de vente en gros.',
+            style: TextStyle(
+              color: Color(0xE6FFFFFF),
+              fontSize: 15.5,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginPanel extends StatelessWidget {
+  const _LoginPanel({
+    required this.isLoading,
+    required this.organisationController,
+    required this.emailController,
+    required this.passwordController,
+    required this.obscurePassword,
+    required this.onTogglePassword,
+    required this.onSubmit,
+  });
+
+  final bool isLoading;
+  final TextEditingController organisationController;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool obscurePassword;
+  final VoidCallback onTogglePassword;
+  final Future<void> Function() onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5EAF1)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 24,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              _StatusDot(),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Connexion sécurisée',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _LoginField(
+            controller: organisationController,
+            labelText: 'Organisation',
+            hintText: 'Nom de votre organisation',
+            icon: Icons.business_outlined,
+            textInputAction: TextInputAction.next,
+            validatorMessage: 'Organisation obligatoire',
+          ),
+          const SizedBox(height: 14),
+          _LoginField(
+            controller: emailController,
+            labelText: 'Adresse e-mail',
+            hintText: 'exemple@entreprise.com',
+            icon: Icons.alternate_email_rounded,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            validatorMessage: 'Adresse e-mail obligatoire',
+          ),
+          const SizedBox(height: 14),
+          _LoginField(
+            controller: passwordController,
+            labelText: 'Mot de passe',
+            hintText: 'Votre mot de passe',
+            icon: Icons.lock_outline_rounded,
+            obscureText: obscurePassword,
+            textInputAction: TextInputAction.done,
+            validatorMessage: 'Mot de passe obligatoire',
+            onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
+            suffixIcon: IconButton(
+              tooltip: obscurePassword
+                  ? 'Afficher le mot de passe'
+                  : 'Masquer le mot de passe',
+              onPressed: onTogglePassword,
+              icon: Icon(
+                obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: const Color(0xFF64748B),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {},
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                textStyle: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: const Text('Mot de passe oublié ?'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 56,
+            child: ElevatedButton(
+              onPressed: isLoading ? null : onSubmit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF9DB7EF),
+                disabledForegroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              child: isLoading
+                  ? const SizedBox.square(
+                      dimension: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.8,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Se connecter'),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded, size: 21),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: const BoxDecoration(
+        color: Color(0xFF16A34A),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: Color(0x3316A34A), blurRadius: 8, spreadRadius: 2),
+        ],
+      ),
     );
   }
 }
@@ -250,8 +393,10 @@ class _BrandHeader extends StatelessWidget {
 class _LoginField extends StatelessWidget {
   const _LoginField({
     required this.controller,
+    required this.labelText,
     required this.hintText,
     required this.validatorMessage,
+    required this.icon,
     this.keyboardType,
     this.textInputAction,
     this.obscureText = false,
@@ -260,8 +405,10 @@ class _LoginField extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final String labelText;
   final String hintText;
   final String validatorMessage;
+  final IconData icon;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final bool obscureText;
@@ -276,36 +423,53 @@ class _LoginField extends StatelessWidget {
       textInputAction: textInputAction,
       obscureText: obscureText,
       onFieldSubmitted: onFieldSubmitted,
-      style: const TextStyle(color: Color(0xFF11111F), fontSize: 18),
+      style: const TextStyle(
+        color: Color(0xFF0F172A),
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
+        labelText: labelText,
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Color(0xFF7B7B85),
-          fontSize: 18,
-          fontWeight: FontWeight.w400,
-        ),
+        prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 22),
         suffixIcon: suffixIcon,
+        labelStyle: const TextStyle(
+          color: Color(0xFF64748B),
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: Color(0xFF2563EB),
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+        ),
+        hintStyle: const TextStyle(
+          color: Color(0xFF94A3B8),
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        errorStyle: const TextStyle(fontWeight: FontWeight.w600),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 22,
+          horizontal: 16,
           vertical: 18,
         ),
         filled: true,
-        fillColor: Colors.white,
-        border: _fieldBorder(const Color(0xFFE3E5EA)),
-        enabledBorder: _fieldBorder(const Color(0xFFE3E5EA)),
-        focusedBorder: _fieldBorder(const Color(0xFF4A96E2)),
-        errorBorder: _fieldBorder(const Color(0xFFE35656)),
-        focusedErrorBorder: _fieldBorder(const Color(0xFFE35656)),
+        fillColor: const Color(0xFFF8FAFC),
+        border: _fieldBorder(const Color(0xFFE2E8F0)),
+        enabledBorder: _fieldBorder(const Color(0xFFE2E8F0)),
+        focusedBorder: _fieldBorder(const Color(0xFF2563EB), width: 1.6),
+        errorBorder: _fieldBorder(const Color(0xFFE85D4F), width: 1.5),
+        focusedErrorBorder: _fieldBorder(const Color(0xFFE85D4F), width: 1.6),
       ),
       validator: (value) =>
           value == null || value.trim().isEmpty ? validatorMessage : null,
     );
   }
 
-  OutlineInputBorder _fieldBorder(Color color) {
+  OutlineInputBorder _fieldBorder(Color color, {double width = 1}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: color, width: 1.4),
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 }
@@ -315,24 +479,17 @@ class _SupportPhone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 60,
-      child: OutlinedButton.icon(
-        onPressed: () {},
-        icon: const Icon(
-          Icons.phone_in_talk,
-          color: Color(0xFFD82727),
-          size: 30,
-        ),
-        label: const Text('71 204 542'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF11111F),
-          side: const BorderSide(color: Color(0xFFE6E8ED), width: 1.4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-        ),
+    return OutlinedButton.icon(
+      onPressed: () {},
+      icon: const Icon(Icons.phone_in_talk_outlined, size: 22),
+      label: const Text('71 204 542'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        foregroundColor: const Color(0xFF0F172A),
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: Color(0xFFE5EAF1)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
     );
   }
