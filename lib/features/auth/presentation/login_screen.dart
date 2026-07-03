@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../../catalog/presentation/catalog_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -48,16 +49,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen(authProvider, (previous, next) {
       next.whenOrNull(
         data: (data) {
-          if (data != null) {
-            ScaffoldMessenger.of(
+          if (data != null && data.data['success'] == true) {
+            Navigator.pushReplacement(
               context,
-            ).showSnackBar(const SnackBar(content: Text('Connexion réussie')));
+              MaterialPageRoute(builder: (_) => const CatalogScreen()),
+            );
           }
         },
         error: (error, _) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error.toString())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error.toString())),
+          );
         },
       );
     });
