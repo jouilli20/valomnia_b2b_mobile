@@ -2,10 +2,10 @@ class ApiConstants {
   ApiConstants._();
 
   // Base API
-  static const String baseUrl = 'https://agro.valomnia.com/api/';
+  static const String baseUrl = 'https://api.valomnia.com/api/';
 
   // Tenant URL
-  static const String tenantBaseUrl = 'https://agro.valomnia.com/';
+  static const String tenantBaseUrl = 'https://api.valomnia.com/api/';
 
   // Headers
   static const String jsonContentType = 'application/json';
