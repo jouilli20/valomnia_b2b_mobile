@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/storage/secure_storage_service.dart';
 
 import '../domain/login_request.dart';
 import '../domain/login_response.dart';
@@ -30,7 +31,15 @@ class AuthNotifier extends Notifier<AsyncValue<LoginResponse?>> {
       );
 
       final response = await repository.login(request);
+      await SecureStorageService.saveSession(response.data);
 
+      await SecureStorageService.saveUsername(username);
+
+      await SecureStorageService.saveOrganisation(organisation);
+
+      final session = await SecureStorageService.getSession();
+
+      print(session);
       state = AsyncValue.data(response);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
