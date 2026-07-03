@@ -11,9 +11,9 @@ class LoginRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'organisation': organisation,
       'username': username,
       'password': password,
+      'organisation': organisation,
     };
   }
 }

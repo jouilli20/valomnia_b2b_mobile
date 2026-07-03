@@ -7,9 +7,10 @@ class DioClient {
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
-      headers: {
-        'Accept': 'application/json',
-      },
+      followRedirects: false,
+      validateStatus: (status) =>
+          status != null && status >= 200 && status < 300,
+      headers: {'Accept': 'application/json'},
     ),
   );
 }

@@ -2,7 +2,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Base API
-  static const String baseUrl = 'https://agro.valomnia.com/api';
+  static const String baseUrl = 'https://agro.valomnia.com/api/';
 
   // Tenant URL
   static const String tenantBaseUrl = 'https://agro.valomnia.com/';
@@ -13,7 +13,7 @@ class ApiConstants {
       'application/x-www-form-urlencoded';
 
   // Authentication
-  static const String login = '/loginB2B';
+  static const String login = 'loginB2B';
   static const String checkPassword = '/check-password';
   static const String updateUser = '/update-user';
   static const String forgotPassword = '/forgot-password';
