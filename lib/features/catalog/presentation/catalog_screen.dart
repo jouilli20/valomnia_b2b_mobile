@@ -10,7 +10,7 @@ const _ink = Color(0xFF0F172A);
 const _muted = Color(0xFF64748B);
 const _line = Color(0xFFE5EAF1);
 const _surface = Colors.white;
-const _page = Color(0xFFF4F7FB);
+const _page = Color(0xFFF8FAFC);
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -22,6 +22,8 @@ class CatalogScreen extends StatefulWidget {
 class _CatalogScreenState extends State<CatalogScreen> {
   int _selectedCategory = 0;
   int _selectedSubCategory = 0;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   static const List<_Category> _categories = [
     _Category(
@@ -50,14 +52,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     ),
   ];
 
-  static const List<String> _subCategories = [
-    'Tous',
-    'Promos',
-    'Packs',
-    'Gratuites',
-  ];
+  static const List<String> _subCategories = ['Tous', 'Promos', 'Packs', 'Gratuites'];
 
-  static const List<_Product> _products = [
+  final List<_Product> _products = [
     _Product(
       name: 'Thon entier',
       category: 'Alimentaire',
@@ -67,7 +64,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       icon: Icons.set_meal_outlined,
     ),
     _Product(
-      name: 'Eau minerale 1.5L',
+      name: 'Eau minérale 1.5L',
       category: 'Boissons',
       price: '8 dt',
       badge: 'Stock',
@@ -75,7 +72,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       icon: Icons.water_drop_outlined,
     ),
     _Product(
-      name: 'Pate spaghetti',
+      name: 'Pâte spaghetti',
       category: 'Alimentaire',
       price: '1 dt',
       badge: null,
@@ -91,7 +88,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       icon: Icons.local_fire_department_outlined,
     ),
     _Product(
-      name: 'Huile d olive 1L',
+      name: 'Huile d\'olive 1L',
       category: 'Alimentaire',
       price: '18 dt',
       badge: 'Top',
@@ -110,99 +107,126 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   Future<void> _logout(BuildContext context) async {
     await SecureStorageService.logout();
-
     if (!context.mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
+  List<_Product> get _filteredProducts {
+    final activeCategory = _categories[_selectedCategory];
+
+    var result = _products.where((product) {
+      final matchesCategory = activeCategory.value == 'Promo'
+          ? product.badge != null
+          : product.category == activeCategory.value;
+
+      final matchesSearch = _searchQuery.isEmpty ||
+          product.name.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      return matchesCategory && matchesSearch;
+    }).toList();
+
+    if (_selectedSubCategory == 1) {
+      result = result.where((p) => p.badge != null).toList();
+    }
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final activeCategory = _categories[_selectedCategory];
-    final filteredProducts = _filterProducts(activeCategory.value);
+    final filteredProducts = _filteredProducts;
 
     return Scaffold(
       backgroundColor: _page,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Column(
-                  children: [
-                    _Header(onLogout: () => _logout(context)),
-                    const SizedBox(height: 16),
-                    const _SearchBar(),
-                    const SizedBox(height: 16),
-                    _CategorySelector(
-                      categories: _categories,
-                      subCategories: _subCategories,
-                      selectedIndex: _selectedCategory,
-                      selectedSubIndex: _selectedSubCategory,
-                      onSelected: (index) {
-                        setState(() {
-                          _selectedCategory = index;
-                          _selectedSubCategory = 0;
-                        });
-                      },
-                      onSubSelected: (index) {
-                        setState(() => _selectedSubCategory = index);
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _SectionHeader(count: filteredProducts.length),
-                  ],
+        child: RefreshIndicator(
+          onRefresh: () async => setState(() {}),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    children: [
+                      _Header(onLogout: () => _logout(context)),
+                      const SizedBox(height: 20),
+                      _SearchBar(
+                        controller: _searchController,
+                        onChanged: (value) => setState(() => _searchQuery = value),
+                      ),
+                      const SizedBox(height: 20),
+                      _CategorySelector(
+                        categories: _categories,
+                        subCategories: _subCategories,
+                        selectedIndex: _selectedCategory,
+                        selectedSubIndex: _selectedSubCategory,
+                        onCategorySelected: (index) {
+                          setState(() {
+                            _selectedCategory = index;
+                            _selectedSubCategory = 0;
+                          });
+                        },
+                        onSubSelected: (index) =>
+                            setState(() => _selectedSubCategory = index),
+                      ),
+                      const SizedBox(height: 16),
+                      _SectionHeader(count: filteredProducts.length),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 112),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.crossAxisExtent;
-                  final crossAxisCount = width >= 560 ? 3 : 2;
-
-                  return SliverGrid.builder(
-                    itemCount: filteredProducts.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: 0.71,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 14,
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                sliver: filteredProducts.isEmpty
+                    ? const SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off_rounded,
+                            size: 48, color: _muted),
+                        SizedBox(height: 12),
+                        Text('Aucun produit trouvé',
+                            style: TextStyle(fontSize: 16, color: _muted)),
+                      ],
                     ),
-                    itemBuilder: (context, index) {
-                      return _ProductCard(product: filteredProducts[index]);
-                    },
-                  );
-                },
+                  ),
+                )
+                    : SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.crossAxisExtent;
+                    final crossAxisCount = width >= 560 ? 3 : 2;
+
+                    return SliverGrid.builder(
+                      itemCount: filteredProducts.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 0.72,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemBuilder: (context, index) {
+                        return _ProductCard(
+                            product: filteredProducts[index]);
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: const _CatalogNavigationBar(),
     );
   }
-
-  List<_Product> _filterProducts(String category) {
-    final productsByCategory = category == 'Promo'
-        ? _products.where((product) => product.badge != null)
-        : _products.where((product) => product.category == category);
-
-    if (_selectedSubCategory == 1) {
-      return productsByCategory
-          .where((product) => product.badge != null)
-          .toList();
-    }
-
-    return productsByCategory.toList();
-  }
 }
+
+// ====================== Widgets ======================
 
 class _Header extends StatelessWidget {
   const _Header({required this.onLogout});
@@ -214,24 +238,22 @@ class _Header extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 50,
-          height: 50,
+          width: 52,
+          height: 52,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
               colors: [_deepTeal, _primary],
             ),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x242563EB),
+                color: Color(0x402563EB),
                 blurRadius: 20,
-                offset: Offset(0, 10),
+                offset: Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.home_rounded, color: Colors.white, size: 25),
+          child: const Icon(Icons.home_rounded, color: Colors.white, size: 26),
         ),
         const SizedBox(width: 12),
         const Expanded(
@@ -240,37 +262,32 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 'Valomnia B2B',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: _ink,
-                  fontSize: 19,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
+                  color: _ink,
                 ),
               ),
-              SizedBox(height: 2),
               Text(
                 'Catalogue commercial',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
+                  fontSize: 13,
                   color: _muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
         _RoundIconButton(
-          tooltip: 'Notifications',
           icon: Icons.notifications_none_rounded,
+          tooltip: 'Notifications',
           onPressed: () {},
         ),
         const SizedBox(width: 8),
         _RoundIconButton(
-          tooltip: 'Deconnexion',
           icon: Icons.logout_rounded,
+          tooltip: 'Déconnexion',
           onPressed: onLogout,
         ),
       ],
@@ -279,7 +296,13 @@ class _Header extends StatelessWidget {
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar();
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _SearchBar({
+    required this.controller,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -287,40 +310,35 @@ class _SearchBar extends StatelessWidget {
       children: [
         Expanded(
           child: TextField(
+            controller: controller,
+            onChanged: onChanged,
             textInputAction: TextInputAction.search,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: 'Rechercher produits, SKU...',
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                size: 21,
-                color: _muted,
-              ),
-              hintStyle: const TextStyle(
-                color: Color(0xFF94A3B8),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 15,
-              ),
+              prefixIcon: const Icon(Icons.search_rounded, color: _muted),
               filled: true,
               fillColor: _surface,
-              border: _inputBorder(_line),
-              enabledBorder: _inputBorder(_line),
-              focusedBorder: _inputBorder(_primary, width: 1.6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _primary, width: 1.8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         _RoundIconButton(
-          tooltip: 'Filtres',
           icon: Icons.tune_rounded,
+          tooltip: 'Filtres',
           onPressed: () {},
           filled: true,
         ),
@@ -335,7 +353,7 @@ class _CategorySelector extends StatelessWidget {
     required this.subCategories,
     required this.selectedIndex,
     required this.selectedSubIndex,
-    required this.onSelected,
+    required this.onCategorySelected,
     required this.onSubSelected,
   });
 
@@ -343,58 +361,65 @@ class _CategorySelector extends StatelessWidget {
   final List<String> subCategories;
   final int selectedIndex;
   final int selectedSubIndex;
-  final ValueChanged<int> onSelected;
+  final ValueChanged<int> onCategorySelected;
   final ValueChanged<int> onSubSelected;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              children: [
-                for (var index = 0; index < categories.length; index++)
-                  Expanded(
-                    child: _CategoryBlock(
-                      category: categories[index],
-                      selected: selectedIndex == index,
-                      onPressed: () => onSelected(index),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+        // === Catégories Principales ===
         Container(
-          height: 32,
+          height: 62,
           decoration: BoxDecoration(
             color: _surface,
-            border: Border.all(color: _line),
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(12),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x080F172A),
-                blurRadius: 8,
+                blurRadius: 10,
                 offset: Offset(0, 4),
               ),
             ],
           ),
           child: Row(
-            children: [
-              for (var index = 0; index < subCategories.length; index++)
-                Expanded(
-                  child: _SubCategoryBlock(
-                    label: subCategories[index],
-                    selected: selectedSubIndex == index,
-                    onPressed: () => onSubSelected(index),
-                  ),
+            children: List.generate(categories.length, (index) {
+              final cat = categories[index];
+              final isSelected = selectedIndex == index;
+              return Expanded(
+                child: _CategoryBlock(
+                  category: cat,
+                  selected: isSelected,
+                  onPressed: () => onCategorySelected(index),
                 ),
-            ],
+              );
+            }),
+          ),
+        ),
+
+        // === Sous-catégories ===
+        Container(
+          height: 42,
+          decoration: BoxDecoration(
+            color: _surface,
+            border: Border(
+              top: BorderSide.none,
+              bottom: BorderSide(color: _line),
+              left: BorderSide(color: _line),
+              right: BorderSide(color: _line),
+            ),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+          ),
+          child: Row(
+            children: List.generate(subCategories.length, (index) {
+              return Expanded(
+                child: _SubCategoryBlock(
+                  label: subCategories[index],
+                  selected: selectedSubIndex == index,
+                  onPressed: () => onSubSelected(index),
+                ),
+              );
+            }),
           ),
         ),
       ],
@@ -416,37 +441,54 @@ class _CategoryBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: category.color,
+      color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(category.icon, color: Colors.white, size: 17),
-                const SizedBox(height: 4),
-                Text(
-                  category.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: selected ? category.color : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    category.icon,
+                    color: selected ? Colors.white : category.color,
+                    size: 22,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    category.label,
+                    style: TextStyle(
+                      color: selected ? Colors.white : category.color,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+              if (selected)
+                Positioned(
+                  bottom: 6,
+                  child: Container(
+                    width: 24,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ],
-            ),
-            if (selected)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(height: 4, color: Colors.white),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -467,18 +509,23 @@ class _SubCategoryBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? _primary : _surface,
+      color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? _primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: selected ? Colors.white : const Color(0xFF475569),
-              fontSize: 10.5,
+              fontSize: 12.5,
               fontWeight: FontWeight.w800,
+              letterSpacing: -0.1,
             ),
           ),
         ),
@@ -486,7 +533,6 @@ class _SubCategoryBlock extends StatelessWidget {
     );
   }
 }
-
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.count});
 
@@ -494,34 +540,26 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Articles disponibles',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _ink,
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Articles disponibles',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: _ink,
           ),
-          Text(
-            '$count produits',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _muted,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-            ),
+        ),
+        Text(
+          '$count produits',
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: _muted,
+            fontWeight: FontWeight.w700,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -533,85 +571,74 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 20,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: _ProductVisual(product: product),
-              ),
+    return GestureDetector(
+      onTap: () {
+        // Navigation vers détail produit (à implémenter)
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _line),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F0F172A),
+              blurRadius: 20,
+              offset: Offset(0, 10),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 13,
-                    height: 1.18,
-                    fontWeight: FontWeight.w900,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _ProductVisual(product: product),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 7),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
                         product.price,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: _primary,
-                          fontSize: 15,
+                          fontSize: 16.5,
                           fontWeight: FontWeight.w900,
+                          color: _primary,
                         ),
                       ),
-                    ),
-                    SizedBox.square(
-                      dimension: 34,
-                      child: FilledButton(
+                      const Spacer(),
+                      FilledButton(
                         onPressed: () {},
                         style: FilledButton.styleFrom(
-                          padding: EdgeInsets.zero,
                           backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          minimumSize: const Size(36, 36),
                         ),
                         child: const Icon(Icons.add_rounded, size: 20),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -636,42 +663,42 @@ class _ProductVisual extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          right: -18,
-          top: -18,
-          child: _BannerCircle(size: 74, opacity: 0.24),
+        const Positioned(
+          right: -20,
+          top: -20,
+          child: _BannerCircle(size: 78, opacity: 0.25),
         ),
-        Positioned(
-          left: -22,
-          bottom: -24,
-          child: _BannerCircle(size: 88, opacity: 0.18),
+        const Positioned(
+          left: -25,
+          bottom: -25,
+          child: _BannerCircle(size: 92, opacity: 0.18),
         ),
         Center(
           child: Container(
-            width: 58,
-            height: 58,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xD9FFFFFF),
+              color: Colors.white.withOpacity(0.85),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(product.icon, color: const Color(0xFF111827), size: 34),
+            child: Icon(product.icon, size: 36, color: const Color(0xFF111827)),
           ),
         ),
         if (product.badge != null)
           Positioned(
-            left: 8,
-            top: 8,
+            left: 10,
+            top: 10,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF2F2F),
+                color: _danger,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 product.badge!,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 9.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -700,7 +727,6 @@ class _CatalogNavigationBar extends StatelessWidget {
           selectedIcon: Icon(Icons.home_rounded, color: _primary),
           label: 'Accueil',
         ),
-
         NavigationDestination(
           icon: Badge(
             label: Text('3'),
@@ -730,14 +756,14 @@ class _CatalogNavigationBar extends StatelessWidget {
 
 class _RoundIconButton extends StatelessWidget {
   const _RoundIconButton({
-    required this.tooltip,
     required this.icon,
+    required this.tooltip,
     required this.onPressed,
     this.filled = false,
   });
 
-  final String tooltip;
   final IconData icon;
+  final String tooltip;
   final VoidCallback onPressed;
   final bool filled;
 
@@ -781,13 +807,6 @@ class _BannerCircle extends StatelessWidget {
       ),
     );
   }
-}
-
-OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
-  return OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: BorderSide(color: color, width: width),
-  );
 }
 
 class _Category {
