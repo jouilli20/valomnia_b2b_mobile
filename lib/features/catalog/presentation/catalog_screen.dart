@@ -30,7 +30,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       label: 'Alim.',
       value: 'Alimentaire',
       icon: Icons.local_dining_outlined,
-      color: _primary,
+      color: Color(0xFF1FA06F),
     ),
     _Category(
       label: 'Cosm.',
@@ -42,7 +42,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       label: 'Eau',
       value: 'Boissons',
       icon: Icons.water_drop_outlined,
-      color: Color(0xFF1FA06F),
+      color: _primary,
     ),
     _Category(
       label: 'Promo',
@@ -52,7 +52,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
     ),
   ];
 
-  static const List<String> _subCategories = ['Tous', 'Promos', 'Packs', 'Gratuites'];
+  static const List<String> _subCategories = [
+    'Tous',
+    'Promos',
+    'Packs',
+    'Gratuites',
+  ];
 
   final List<_Product> _products = [
     _Product(
@@ -122,7 +127,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ? product.badge != null
           : product.category == activeCategory.value;
 
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           product.name.toLowerCase().contains(_searchQuery.toLowerCase());
 
       return matchesCategory && matchesSearch;
@@ -156,7 +162,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       const SizedBox(height: 20),
                       _SearchBar(
                         controller: _searchController,
-                        onChanged: (value) => setState(() => _searchQuery = value),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
                       ),
                       const SizedBox(height: 20),
                       _CategorySelector(
@@ -183,39 +190,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                 sliver: filteredProducts.isEmpty
                     ? const SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off_rounded,
-                            size: 48, color: _muted),
-                        SizedBox(height: 12),
-                        Text('Aucun produit trouvé',
-                            style: TextStyle(fontSize: 16, color: _muted)),
-                      ],
-                    ),
-                  ),
-                )
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 48,
+                                color: _muted,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Aucun produit trouvé',
+                                style: TextStyle(fontSize: 16, color: _muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     : SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.crossAxisExtent;
-                    final crossAxisCount = width >= 560 ? 3 : 2;
+                        builder: (context, constraints) {
+                          final width = constraints.crossAxisExtent;
+                          final crossAxisCount = width >= 560 ? 3 : 2;
 
-                    return SliverGrid.builder(
-                      itemCount: filteredProducts.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        childAspectRatio: 0.72,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 16,
+                          return SliverGrid.builder(
+                            itemCount: filteredProducts.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  childAspectRatio: 0.72,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 16,
+                                ),
+                            itemBuilder: (context, index) {
+                              return _ProductCard(
+                                product: filteredProducts[index],
+                              );
+                            },
+                          );
+                        },
                       ),
-                      itemBuilder: (context, index) {
-                        return _ProductCard(
-                            product: filteredProducts[index]);
-                      },
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -242,9 +256,7 @@ class _Header extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: const LinearGradient(
-              colors: [_deepTeal, _primary],
-            ),
+            gradient: const LinearGradient(colors: [_deepTeal, _primary]),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x402563EB),
@@ -299,10 +311,7 @@ class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
-  const _SearchBar({
-    required this.controller,
-    required this.onChanged,
-  });
+  const _SearchBar({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -408,7 +417,9 @@ class _CategorySelector extends StatelessWidget {
               left: BorderSide(color: _line),
               right: BorderSide(color: _line),
             ),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
           ),
           child: Row(
             children: List.generate(subCategories.length, (index) {
@@ -533,6 +544,7 @@ class _SubCategoryBlock extends StatelessWidget {
     );
   }
 }
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.count});
 
@@ -591,9 +603,7 @@ class _ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _ProductVisual(product: product),
-            ),
+            Expanded(child: _ProductVisual(product: product)),
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -678,7 +688,7 @@ class _ProductVisual extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(product.icon, size: 36, color: const Color(0xFF111827)),
