@@ -218,11 +218,7 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.inventory_2_rounded,
-            color: Colors.white,
-            size: 23,
-          ),
+          child: const Icon(Icons.home_rounded, color: Colors.white, size: 23),
         ),
         const SizedBox(width: 10),
         const Expanded(
@@ -663,7 +659,7 @@ class _CatalogNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-      selectedIndex: 1,
+      selectedIndex: 0,
       height: 72,
       backgroundColor: Colors.white,
       indicatorColor: const Color(0x1A4A96E2),
@@ -674,11 +670,7 @@ class _CatalogNavigationBar extends StatelessWidget {
           selectedIcon: Icon(Icons.home_rounded),
           label: 'Accueil',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.grid_view_outlined),
-          selectedIcon: Icon(Icons.grid_view_rounded),
-          label: 'Catalogue',
-        ),
+
         NavigationDestination(
           icon: Badge(
             label: Text('3'),
