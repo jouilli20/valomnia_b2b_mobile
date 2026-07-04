@@ -28,20 +28,20 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     super.dispose();
   }
 
+  // ---- Lecture défensive des champs catégorie ----
+  // La doc API ne fige pas le schéma JSON exact renvoyé par
+  // GET /api/itemCategories, donc on essaie plusieurs clés plausibles.
+
   static String _categoryName(dynamic category) {
     if (category is Map) {
-      return category['name']?.toString().trim().isNotEmpty == true
-          ? category['name'].toString().trim()
-          : 'Categorie';
+      final n = category['name']?.toString().trim();
+      if (n != null && n.isNotEmpty) return n;
     }
-
-    return 'Categorie';
+    return 'Catégorie';
   }
 
   static String? _categoryDescription(dynamic category) {
-    if (category is! Map) {
-      return null;
-    }
+    if (category is! Map) return null;
 
     final candidates = [
       category['description'],
@@ -56,31 +56,31 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         return value;
       }
     }
-
     return null;
   }
 
   static String? _categoryImageUrl(dynamic image) {
     final rawImage = image?.toString().trim();
-
     if (rawImage == null || rawImage.isEmpty || rawImage == 'null') {
       return null;
     }
 
     final imageUri = Uri.tryParse(rawImage);
-
     if (imageUri != null && imageUri.hasScheme) {
       return rawImage;
     }
 
+    // Chemin relatif renvoyé par le back -> on le résout sur le
+    // baseUrl du tenant. NB: CatalogApi.getCategories() envoie
+    // actuellement 'https://agro.valomnia.com' en dur comme baseUrl —
+    // pensez à le remplacer par ApiConstants.tenantBaseUrl (ou par
+    // l'organisation réelle du client connecté) pour rester cohérent
+    // ici et là-bas.
     return Uri.parse(ApiConstants.tenantBaseUrl).resolve(rawImage).toString();
   }
 
   static String? _imageFromCategory(dynamic category) {
-    if (category is! Map) {
-      return null;
-    }
-
+    if (category is! Map) return null;
     return _categoryImageUrl(
       category['image'] ??
           category['picture'] ??
@@ -100,13 +100,30 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   Future<void> _logout(BuildContext context) async {
     await SecureStorageService.logout();
-
     if (!context.mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
+  }
+
+  List<dynamic> _filterCategories(List<dynamic> categories) {
+    final normalizedQuery = _query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) return categories;
+
+    return categories.where((category) {
+      final name = _categoryName(category).toLowerCase();
+      final description = _categoryDescription(category)?.toLowerCase() ?? '';
+      return name.contains(normalizedQuery) ||
+          description.contains(normalizedQuery);
+    }).toList();
+  }
+
+  void _updateQuery(String value) => setState(() => _query = value);
+
+  void _clearQuery() {
+    _searchController.clear();
+    _updateQuery('');
   }
 
   @override
@@ -145,7 +162,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                   icon: Icons.wifi_off_rounded,
                   title: 'Impossible de charger le catalogue',
                   message: error.toString(),
-                  actionLabel: 'Reessayer',
+                  actionLabel: 'Réessayer',
                   onAction: _reloadCategories,
                 ),
               ),
@@ -168,9 +185,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                     hasScrollBody: false,
                     child: _StateMessage(
                       icon: Icons.inventory_2_outlined,
-                      title: 'Aucune categorie trouvee',
-                      message:
-                          'Tirez vers le bas pour actualiser le catalogue.',
+                      title: 'Aucune catégorie trouvée',
+                      message: 'Tirez vers le bas pour actualiser le catalogue.',
                     ),
                   )
                 else if (filteredCategories.isEmpty)
@@ -178,9 +194,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                     hasScrollBody: false,
                     child: _StateMessage(
                       icon: Icons.search_off_rounded,
-                      title: 'Aucun resultat',
+                      title: 'Aucun résultat',
                       message:
-                          'Essayez un autre mot-cle pour retrouver une categorie.',
+                      'Essayez un autre mot-clé pour retrouver une catégorie.',
                       actionLabel: 'Effacer',
                       onAction: _clearQuery,
                     ),
@@ -195,22 +211,22 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
                         return SliverGrid(
                           gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 14,
-                                mainAxisSpacing: 14,
-                                childAspectRatio: width >= 720 ? 0.92 : 0.76,
-                              ),
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: width >= 720 ? 0.92 : 0.76,
+                          ),
+                          delegate: SliverChildBuilderDelegate((context, index) {
                             final category = filteredCategories[index];
-
                             return _CategoryCard(
                               name: _categoryName(category),
                               description: _categoryDescription(category),
                               imageUrl: _imageFromCategory(category),
+                              // TODO: naviguer vers l'écran produits de
+                              // cette catégorie une fois l'endpoint
+                              // POST /api/items branché.
+                              onTap: () {},
                             );
                           }, childCount: filteredCategories.length),
                         );
@@ -223,31 +239,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         ),
       ),
     );
-  }
-
-  List<dynamic> _filterCategories(List<dynamic> categories) {
-    final normalizedQuery = _query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty) {
-      return categories;
-    }
-
-    return categories.where((category) {
-      final name = _categoryName(category).toLowerCase();
-      final description = _categoryDescription(category)?.toLowerCase() ?? '';
-      return name.contains(normalizedQuery) ||
-          description.contains(normalizedQuery);
-    }).toList();
-  }
-
-  void _updateQuery(String value) {
-    setState(() {
-      _query = value;
-    });
-  }
-
-  void _clearQuery() {
-    _searchController.clear();
-    _updateQuery('');
   }
 }
 
@@ -383,7 +374,7 @@ class _CatalogHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _HeaderIconButton(
-                tooltip: 'Deconnexion',
+                tooltip: 'Déconnexion',
                 icon: Icons.logout_rounded,
                 onPressed: onLogout,
               ),
@@ -421,7 +412,7 @@ class _CatalogHeader extends StatelessWidget {
                       child: _MetricPill(
                         icon: Icons.category_outlined,
                         value: totalCount.toString(),
-                        label: totalCount > 1 ? 'categories' : 'categorie',
+                        label: totalCount > 1 ? 'catégories' : 'catégorie',
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -446,7 +437,7 @@ class _CatalogHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Retrouvez rapidement les categories disponibles pour preparer vos commandes.',
+                  'Retrouvez rapidement les catégories disponibles pour préparer vos commandes.',
                   style: TextStyle(
                     color: Color(0xE6FFFFFF),
                     fontSize: 14.5,
@@ -594,7 +585,7 @@ class _SearchField extends StatelessWidget {
         fontWeight: FontWeight.w700,
       ),
       decoration: InputDecoration(
-        hintText: 'Rechercher une categorie',
+        hintText: 'Rechercher une catégorie',
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: _CatalogScreenState._mutedColor,
@@ -602,13 +593,13 @@ class _SearchField extends StatelessWidget {
         suffixIcon: query.isEmpty
             ? null
             : IconButton(
-                tooltip: 'Effacer',
-                onPressed: onClear,
-                icon: const Icon(
-                  Icons.close_rounded,
-                  color: _CatalogScreenState._mutedColor,
-                ),
-              ),
+          tooltip: 'Effacer',
+          onPressed: onClear,
+          icon: const Icon(
+            Icons.close_rounded,
+            color: _CatalogScreenState._mutedColor,
+          ),
+        ),
         filled: true,
         fillColor: enabled ? Colors.white : const Color(0xFFEFF4FA),
         hintStyle: const TextStyle(
@@ -616,10 +607,8 @@ class _SearchField extends StatelessWidget {
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 17,
-        ),
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
         border: _border(const Color(0xFFE2E8F0)),
         enabledBorder: _border(const Color(0xFFE2E8F0)),
         focusedBorder: _border(_CatalogScreenState._primaryColor, width: 1.6),
@@ -641,11 +630,13 @@ class _CategoryCard extends StatelessWidget {
     required this.name,
     required this.description,
     required this.imageUrl,
+    required this.onTap,
   });
 
   final String name;
   final String? description;
   final String? imageUrl;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -653,7 +644,7 @@ class _CategoryCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Container(
           decoration: BoxDecoration(
@@ -672,9 +663,8 @@ class _CategoryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(22)),
                   child: _CategoryImage(imageUrl: imageUrl),
                 ),
               ),
@@ -745,10 +735,7 @@ class _CategoryImage extends StatelessWidget {
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => const _ImageFallback(),
       loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          return child;
-        }
-
+        if (loadingProgress == null) return child;
         return const _ImageLoading();
       },
     );
@@ -805,7 +792,7 @@ class _LoadingSliver extends StatelessWidget {
           childAspectRatio: 0.76,
         ),
         delegate: SliverChildBuilderDelegate(
-          (context, index) => const _LoadingCard(),
+              (context, index) => const _LoadingCard(),
           childCount: 6,
         ),
       ),
