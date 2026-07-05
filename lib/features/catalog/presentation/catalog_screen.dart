@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/storage/secure_storage_service.dart';
-import '../../auth/presentation/login_screen.dart';
 import '../providers/catalog_provider.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
@@ -32,15 +30,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     await ref.read(categoriesProvider.future);
   }
 
-  Future<void> _logout() async {
-    await SecureStorageService.logout();
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-  }
-
   void _clearSearch() {
     _searchController.clear();
     setState(() => _query = '');
@@ -66,27 +55,15 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         title: Text(title),
         centerTitle: false,
         backgroundColor: _CatalogColors.background,
+        foregroundColor: _CatalogColors.ink,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         titleTextStyle: const TextStyle(
           color: _CatalogColors.ink,
           fontSize: 24,
           fontWeight: FontWeight.w900,
         ),
-        actions: [
-          if (_selectedTabIndex == _catalogTabIndex) ...[
-            IconButton(
-              tooltip: 'Actualiser',
-              icon: const Icon(Icons.sync_rounded),
-              onPressed: _refreshCategories,
-            ),
-            IconButton(
-              tooltip: 'Deconnexion',
-              icon: const Icon(Icons.logout_rounded),
-              onPressed: _logout,
-            ),
-          ],
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         top: false,
