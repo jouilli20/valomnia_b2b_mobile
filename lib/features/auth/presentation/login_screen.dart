@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../../catalog/presentation/catalog_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -57,9 +58,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         },
         error: (error, _) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.toString())));
         },
       );
     });
@@ -98,6 +99,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               });
                             },
                             onSubmit: _submitLogin,
+                            onForgotPassword: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 16),
                           const _SupportPhone(),
@@ -222,6 +231,7 @@ class _LoginPanel extends StatelessWidget {
     required this.obscurePassword,
     required this.onTogglePassword,
     required this.onSubmit,
+    required this.onForgotPassword,
   });
 
   final bool isLoading;
@@ -231,6 +241,7 @@ class _LoginPanel extends StatelessWidget {
   final bool obscurePassword;
   final VoidCallback onTogglePassword;
   final Future<void> Function() onSubmit;
+  final VoidCallback onForgotPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +327,7 @@ class _LoginPanel extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: onForgotPassword,
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF2563EB),
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),

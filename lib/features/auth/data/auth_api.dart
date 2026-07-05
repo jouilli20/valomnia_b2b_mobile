@@ -8,24 +8,60 @@ import '../domain/login_request.dart';
 import '../domain/login_response.dart';
 
 class AuthApi {
-  final Dio _dio = DioClient.dio;
+  AuthApi({Dio? dio}) : _dio = dio ?? DioClient.dio;
+
+  static final Options _formOptions = Options(
+    contentType: Headers.formUrlEncodedContentType,
+  );
+  static final Options _textResponseJsonOptions = Options(
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  );
+
+  final Dio _dio;
 
   Future<LoginResponse> login(LoginRequest request) async {
     try {
-      final response = await _dio.post(
+      final response = await _post(
         ApiConstants.login,
         data: request.toJson(),
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: _formOptions,
       );
 
       return LoginResponse.fromJson(_jsonMap(response.data));
     } on DioException catch (error) {
-      _logLoginError(error);
+      _logDioError('LOGIN', error);
       throw AuthException(_loginErrorMessage(error));
     }
   }
 
-  Map<String, dynamic> _jsonMap(dynamic data) {
+  Future<void> forgotPassword({
+    required String email,
+    required String organization,
+  }) async {
+    try {
+      await _post(
+        ApiConstants.forgotPassword,
+        data: {'email': email, 'organization': organization},
+        options: _textResponseJsonOptions,
+      );
+    } on DioException catch (error) {
+      _logDioError('FORGOT PASSWORD', error);
+      throw const AuthException(
+        "Impossible d'envoyer le lien de réinitialisation.",
+      );
+    }
+  }
+
+  Future<Response<dynamic>> _post(
+    String path, {
+    required Object data,
+    required Options options,
+  }) {
+    return _dio.post(path, data: data, options: options);
+  }
+
+  static Map<String, dynamic> _jsonMap(dynamic data) {
     if (data is Map<String, dynamic>) {
       return data;
     }
@@ -37,14 +73,14 @@ class AuthApi {
     throw const AuthException('Réponse serveur invalide.');
   }
 
-  String _loginErrorMessage(DioException error) {
+  static String _loginErrorMessage(DioException error) {
     final statusCode = error.response?.statusCode;
     final redirectLocation = error.response?.headers.value('location');
     final redirectsToLoginPage =
         redirectLocation?.contains('/login/auth') == true;
 
     if (statusCode == 302 || redirectsToLoginPage) {
-      return 'Connexion refusée. Vérifiez l’organisation, l’adresse e-mail et le mot de passe.';
+      return "Connexion refusée. Vérifiez l'organisation, l'adresse e-mail et le mot de passe.";
     }
 
     if (statusCode == 401 || statusCode == 403) {
@@ -58,12 +94,16 @@ class AuthApi {
     return 'Erreur serveur. Réessayez plus tard.';
   }
 
-  void _logLoginError(DioException error) {
-    debugPrint('LOGIN ERROR STATUS: ${error.response?.statusCode}');
+  static void _logDioError(String label, DioException error) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    debugPrint('$label ERROR STATUS: ${error.response?.statusCode}');
     debugPrint(
-      'LOGIN ERROR LOCATION: ${error.response?.headers.value('location')}',
+      '$label ERROR LOCATION: ${error.response?.headers.value('location')}',
     );
-    debugPrint('LOGIN ERROR DATA: ${error.response?.data}');
-    debugPrint('LOGIN ERROR MESSAGE: ${error.message}');
+    debugPrint('$label ERROR DATA: ${error.response?.data}');
+    debugPrint('$label ERROR MESSAGE: ${error.message}');
   }
 }
