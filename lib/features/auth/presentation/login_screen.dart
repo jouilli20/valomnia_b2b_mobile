@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
 import '../../catalog/presentation/catalog_screen.dart';
@@ -490,12 +491,27 @@ class _LoginField extends StatelessWidget {
 class _SupportPhone extends StatelessWidget {
   const _SupportPhone();
 
+  static const _phoneLabel = '71 204 542';
+  static final _phoneUri = Uri(scheme: 'tel', path: '+21671204542');
+
+  Future<void> _callSupport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (await launchUrl(_phoneUri)) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text("Impossible d'ouvrir le téléphone.")),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: () => _callSupport(context),
       icon: const Icon(Icons.phone_in_talk_outlined, size: 22),
-      label: const Text('71 204 542'),
+      label: const Text(_phoneLabel),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
         foregroundColor: const Color(0xFF0F172A),
