@@ -97,8 +97,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       query: _query,
       groups: visibleGroups,
       selectedGroup: selectedGroup,
-      totalCategoryCount: categories.length,
-      parentCount: hierarchy.groups.length,
       hasAnyCategory: hierarchy.groups.isNotEmpty,
       onQueryChanged: _updateQuery,
       onClearQuery: _clearQuery,
@@ -133,8 +131,6 @@ class _CatalogTheme {
   static const inputBorder = Color(0xFFE2E8F0);
   static const primary = Color(0xFF2563EB);
   static const primarySoft = Color(0xFFEAF2FF);
-  static const teal = Color(0xFF155E75);
-  static const accent = Color(0xFFE85D4F);
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const faint = Color(0xFF94A3B8);
@@ -157,8 +153,6 @@ class _CatalogContent extends StatelessWidget {
     required this.query,
     required this.groups,
     required this.selectedGroup,
-    required this.totalCategoryCount,
-    required this.parentCount,
     required this.hasAnyCategory,
     required this.onQueryChanged,
     required this.onClearQuery,
@@ -171,8 +165,6 @@ class _CatalogContent extends StatelessWidget {
   final String query;
   final List<_CategoryGroup> groups;
   final _CategoryGroup? selectedGroup;
-  final int totalCategoryCount;
-  final int parentCount;
   final bool hasAnyCategory;
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onClearQuery;
@@ -194,8 +186,6 @@ class _CatalogContent extends StatelessWidget {
             child: _CatalogHeader(
               controller: searchController,
               query: query,
-              categoryCount: totalCategoryCount,
-              parentCount: parentCount,
               onChanged: onQueryChanged,
               onClear: onClearQuery,
               onRefresh: onRefresh,
@@ -279,8 +269,6 @@ class _CatalogHeader extends StatelessWidget {
   const _CatalogHeader({
     required this.controller,
     required this.query,
-    required this.categoryCount,
-    required this.parentCount,
     required this.onChanged,
     required this.onClear,
     required this.onRefresh,
@@ -289,8 +277,6 @@ class _CatalogHeader extends StatelessWidget {
 
   final TextEditingController controller;
   final String query;
-  final int categoryCount;
-  final int parentCount;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
   final Future<void> Function() onRefresh;
@@ -303,13 +289,8 @@ class _CatalogHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _CatalogHero(
-            categoryCount: categoryCount,
-            parentCount: parentCount,
-            onRefresh: onRefresh,
-            onLogout: onLogout,
-          ),
-          const SizedBox(height: 14),
+          _SimpleCatalogTopBar(onRefresh: onRefresh, onLogout: onLogout),
+          const SizedBox(height: 12),
           _SearchPanel(
             controller: controller,
             query: query,
@@ -322,146 +303,62 @@ class _CatalogHeader extends StatelessWidget {
   }
 }
 
-class _CatalogHero extends StatelessWidget {
-  const _CatalogHero({
-    required this.categoryCount,
-    required this.parentCount,
-    required this.onRefresh,
-    required this.onLogout,
-  });
+class _SimpleCatalogTopBar extends StatelessWidget {
+  const _SimpleCatalogTopBar({required this.onRefresh, required this.onLogout});
 
-  final int categoryCount;
-  final int parentCount;
   final Future<void> Function() onRefresh;
   final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _CatalogTheme.teal,
-            _CatalogTheme.primary,
-            _CatalogTheme.accent,
-          ],
-          stops: [0, 0.68, 1],
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: _CatalogTheme.primarySoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.inventory_2_outlined,
+            color: _CatalogTheme.primary,
+            size: 24,
+          ),
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x242563EB),
-            blurRadius: 28,
-            offset: Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.inventory_2_outlined,
-                  color: _CatalogTheme.primary,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Valomnia B2B',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Catalogue commercial',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Color(0xD9FFFFFF),
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _HeroIconButton(
-                icon: Icons.sync_rounded,
-                tooltip: 'Actualiser',
-                onPressed: onRefresh,
-              ),
-              const SizedBox(width: 8),
-              _HeroIconButton(
-                icon: Icons.logout_rounded,
-                tooltip: 'Deconnexion',
-                onPressed: onLogout,
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          const Text(
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
             'Catalogue',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              height: 1.05,
-              fontWeight: FontWeight.w800,
+              color: _CatalogTheme.ink,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Parcourez les familles, sous-categories et produits disponibles.',
-            style: TextStyle(
-              color: Color(0xE6FFFFFF),
-              fontSize: 15,
-              height: 1.4,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _MetricChip(
-                icon: Icons.account_tree_outlined,
-                label: '$parentCount familles',
-              ),
-              _MetricChip(
-                icon: Icons.category_outlined,
-                label: '$categoryCount categories',
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+        _HeaderIconButton(
+          icon: Icons.sync_rounded,
+          tooltip: 'Actualiser',
+          onPressed: () {
+            onRefresh();
+          },
+        ),
+        const SizedBox(width: 8),
+        _HeaderIconButton(
+          icon: Icons.logout_rounded,
+          tooltip: 'Deconnexion',
+          onPressed: onLogout,
+        ),
+      ],
     );
   }
 }
 
-class _HeroIconButton extends StatelessWidget {
-  const _HeroIconButton({
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
@@ -476,51 +373,21 @@ class _HeroIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.16),
+        color: _CatalogTheme.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(14),
-          child: SizedBox(
+          child: Container(
             width: 42,
             height: 42,
-            child: Icon(icon, color: Colors.white, size: 22),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _CatalogTheme.border),
+            ),
+            child: Icon(icon, color: _CatalogTheme.muted, size: 21),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MetricChip extends StatelessWidget {
-  const _MetricChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -541,60 +408,49 @@ class _SearchPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _CatalogTheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _CatalogTheme.border),
-        boxShadow: _CatalogTheme.panelShadow,
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      style: const TextStyle(
+        color: _CatalogTheme.ink,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
       ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        style: const TextStyle(
-          color: _CatalogTheme.ink,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+      decoration: InputDecoration(
+        hintText: 'Rechercher une categorie',
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: _CatalogTheme.muted,
+          size: 23,
         ),
-        decoration: InputDecoration(
-          hintText: 'Rechercher une categorie',
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: _CatalogTheme.muted,
-            size: 23,
-          ),
-          suffixIcon: query.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Effacer',
-                  onPressed: onClear,
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: _CatalogTheme.muted,
-                    size: 22,
-                  ),
+        suffixIcon: query.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Effacer',
+                onPressed: onClear,
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: _CatalogTheme.muted,
+                  size: 22,
                 ),
-          hintStyle: const TextStyle(
-            color: _CatalogTheme.faint,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
-          ),
-          filled: true,
-          fillColor: _CatalogTheme.fieldFill,
-          border: _CatalogTheme.inputBorderFor(_CatalogTheme.inputBorder),
-          enabledBorder: _CatalogTheme.inputBorderFor(
-            _CatalogTheme.inputBorder,
-          ),
-          focusedBorder: _CatalogTheme.inputBorderFor(
-            _CatalogTheme.primary,
-            width: 1.6,
-          ),
+              ),
+        hintStyle: const TextStyle(
+          color: _CatalogTheme.faint,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+        filled: true,
+        fillColor: _CatalogTheme.fieldFill,
+        border: _CatalogTheme.inputBorderFor(_CatalogTheme.inputBorder),
+        enabledBorder: _CatalogTheme.inputBorderFor(_CatalogTheme.inputBorder),
+        focusedBorder: _CatalogTheme.inputBorderFor(
+          _CatalogTheme.primary,
+          width: 1.6,
         ),
       ),
     );
@@ -1055,9 +911,7 @@ class _CatalogErrorView extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: _CatalogHero(
-              categoryCount: 0,
-              parentCount: 0,
+            child: _SimpleCatalogTopBar(
               onRefresh: () async => onRetry(),
               onLogout: onLogout,
             ),
