@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/storage/secure_storage_service.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../providers/catalog_provider.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
@@ -28,6 +30,15 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   Future<void> _refreshCategories() async {
     ref.invalidate(categoriesProvider);
     await ref.read(categoriesProvider.future);
+  }
+
+  Future<void> _logout() async {
+    await SecureStorageService.logout();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   void _clearSearch() {
@@ -64,6 +75,14 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           fontSize: 24,
           fontWeight: FontWeight.w900,
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Deconnexion',
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _logout,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         top: false,
