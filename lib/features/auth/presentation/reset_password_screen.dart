@@ -72,51 +72,39 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final destination = _resetDestination(widget.email, widget.organization);
+
     return Scaffold(
-      backgroundColor: _ResetColors.background,
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Retour',
-          onPressed: _goBack,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        title: const Text('Nouveau mot de passe'),
-        centerTitle: false,
-        backgroundColor: _ResetColors.background,
-        foregroundColor: _ResetColors.ink,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        titleTextStyle: const TextStyle(
-          color: _ResetColors.ink,
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+      backgroundColor: _AuthColors.background,
       body: SafeArea(
-        top: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 56,
+                  minHeight: constraints.maxHeight - 38,
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
+                    constraints: const BoxConstraints(maxWidth: 460),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _PageIntro(
-                            organization: widget.organization,
-                            email: widget.email,
+                          _BackButton(onPressed: _goBack),
+                          const SizedBox(height: 18),
+                          _ResetHeader(
+                            icon: Icons.shield_outlined,
+                            title: 'Nouveau mot de passe',
+                            subtitle: destination.isEmpty
+                                ? 'Collez le token ou le lien recu, puis choisissez un nouveau mot de passe.'
+                                : 'Lien envoye a $destination. Collez le token puis choisissez votre nouveau mot de passe.',
                           ),
-                          const SizedBox(height: 28),
-                          _ResetPasswordForm(
+                          const SizedBox(height: 22),
+                          _ResetPasswordPanel(
                             isLoading: _isLoading,
                             tokenController: _tokenController,
                             passwordController: _passwordController,
@@ -151,90 +139,120 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 }
 
-class _PageIntro extends StatelessWidget {
-  const _PageIntro({required this.organization, required this.email});
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
 
-  final String? organization;
-  final String? email;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final destination = [
-      if (email != null && email!.isNotEmpty) email,
-      if (organization != null && organization!.isNotEmpty) organization,
-    ].whereType<String>().join(' - ');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _BrandMark(),
-        const SizedBox(height: 24),
-        const Text(
-          'Finaliser la reinitialisation',
-          style: TextStyle(
-            color: _ResetColors.ink,
-            fontSize: 28,
-            height: 1.12,
-            fontWeight: FontWeight.w800,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: IconButton(
+        tooltip: 'Retour',
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: _AuthColors.ink,
+          fixedSize: const Size.square(44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: _AuthColors.border),
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          destination.isEmpty
-              ? 'Saisissez le token recu par email puis choisissez un nouveau mot de passe.'
-              : 'Token envoye a $destination. Saisissez-le ici puis choisissez un nouveau mot de passe.',
-          style: const TextStyle(
-            color: _ResetColors.muted,
-            fontSize: 15.5,
-            height: 1.45,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+        icon: const Icon(Icons.arrow_back_rounded, size: 22),
+      ),
     );
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
+class _ResetHeader extends StatelessWidget {
+  const _ResetHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: _ResetColors.primarySoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.lock_reset_rounded,
-            color: _ResetColors.primary,
-            size: 26,
-          ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF155E75), Color(0xFF2563EB)],
         ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Text(
-            'Valomnia B2B',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _ResetColors.ink,
-              fontSize: 18,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1F2563EB),
+            blurRadius: 24,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(icon, color: _AuthColors.primary, size: 28),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Valomnia B2B',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              height: 1.08,
               fontWeight: FontWeight.w800,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Color(0xE6FFFFFF),
+              fontSize: 15,
+              height: 1.42,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _ResetPasswordForm extends StatelessWidget {
-  const _ResetPasswordForm({
+class _ResetPasswordPanel extends StatelessWidget {
+  const _ResetPasswordPanel({
     required this.isLoading,
     required this.tokenController,
     required this.passwordController,
@@ -259,19 +277,26 @@ class _ResetPasswordForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _ResetColors.border),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _AuthColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 24,
+            offset: Offset(0, 14),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ResetField(
+          _AuthField(
             controller: tokenController,
             labelText: 'Token ou lien',
-            hintText: 'Token ou lien recu par email',
+            hintText: 'Coller le lien recu par email',
             icon: Icons.key_rounded,
             textInputAction: TextInputAction.next,
             validator: (value) => value == null || value.trim().isEmpty
@@ -279,25 +304,16 @@ class _ResetPasswordForm extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 14),
-          _ResetField(
+          _AuthField(
             controller: passwordController,
             labelText: 'Nouveau mot de passe',
             hintText: 'Minimum 6 caracteres',
             icon: Icons.lock_outline_rounded,
             obscureText: obscurePassword,
             textInputAction: TextInputAction.next,
-            suffixIcon: IconButton(
-              tooltip: obscurePassword
-                  ? 'Afficher le mot de passe'
-                  : 'Masquer le mot de passe',
+            suffixIcon: _VisibilityButton(
+              isObscured: obscurePassword,
               onPressed: onTogglePassword,
-              icon: Icon(
-                obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: _ResetColors.muted,
-                size: 22,
-              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -310,27 +326,18 @@ class _ResetPasswordForm extends StatelessWidget {
             },
           ),
           const SizedBox(height: 14),
-          _ResetField(
+          _AuthField(
             controller: confirmPasswordController,
-            labelText: 'Confirmer le mot de passe',
-            hintText: 'Ressaisir le mot de passe',
-            icon: Icons.lock_reset_rounded,
+            labelText: 'Confirmation',
+            hintText: 'Confirmer le mot de passe',
+            icon: Icons.verified_user_outlined,
             obscureText: obscureConfirmPassword,
             textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
-            suffixIcon: IconButton(
-              tooltip: obscureConfirmPassword
-                  ? 'Afficher le mot de passe'
-                  : 'Masquer le mot de passe',
+            suffixIcon: _VisibilityButton(
+              isObscured: obscureConfirmPassword,
               onPressed: onToggleConfirmPassword,
-              icon: Icon(
-                obscureConfirmPassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: _ResetColors.muted,
-                size: 22,
-              ),
             ),
+            onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Confirmation obligatoire';
@@ -342,35 +349,10 @@ class _ResetPasswordForm extends StatelessWidget {
             },
           ),
           const SizedBox(height: 18),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _ResetColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFF9DB7EF),
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox.square(
-                      dimension: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.6,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Modifier le mot de passe'),
-            ),
+          _PrimaryButton(
+            isLoading: isLoading,
+            label: 'Modifier le mot de passe',
+            onPressed: onSubmit,
           ),
         ],
       ),
@@ -378,8 +360,8 @@ class _ResetPasswordForm extends StatelessWidget {
   }
 }
 
-class _ResetField extends StatelessWidget {
-  const _ResetField({
+class _AuthField extends StatelessWidget {
+  const _AuthField({
     required this.controller,
     required this.labelText,
     required this.hintText,
@@ -409,42 +391,42 @@ class _ResetField extends StatelessWidget {
       obscureText: obscureText,
       onFieldSubmitted: onFieldSubmitted,
       style: const TextStyle(
-        color: _ResetColors.ink,
-        fontSize: 15.5,
+        color: _AuthColors.ink,
+        fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,
-        prefixIcon: Icon(icon, color: _ResetColors.muted, size: 21),
+        prefixIcon: Icon(icon, color: _AuthColors.muted, size: 22),
         suffixIcon: suffixIcon,
         labelStyle: const TextStyle(
-          color: _ResetColors.muted,
-          fontSize: 14,
+          color: _AuthColors.muted,
+          fontSize: 14.5,
           fontWeight: FontWeight.w600,
         ),
         floatingLabelStyle: const TextStyle(
-          color: _ResetColors.primary,
-          fontSize: 14.5,
+          color: _AuthColors.primary,
+          fontSize: 15,
           fontWeight: FontWeight.w800,
         ),
         hintStyle: const TextStyle(
-          color: _ResetColors.faint,
-          fontSize: 14.5,
+          color: _AuthColors.faint,
+          fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
         errorStyle: const TextStyle(fontWeight: FontWeight.w600),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
+          horizontal: 16,
+          vertical: 18,
         ),
         filled: true,
-        fillColor: _ResetColors.field,
-        border: _fieldBorder(_ResetColors.inputBorder),
-        enabledBorder: _fieldBorder(_ResetColors.inputBorder),
-        focusedBorder: _fieldBorder(_ResetColors.primary, width: 1.5),
-        errorBorder: _fieldBorder(_ResetColors.error, width: 1.4),
-        focusedErrorBorder: _fieldBorder(_ResetColors.error, width: 1.5),
+        fillColor: _AuthColors.field,
+        border: _fieldBorder(_AuthColors.inputBorder),
+        enabledBorder: _fieldBorder(_AuthColors.inputBorder),
+        focusedBorder: _fieldBorder(_AuthColors.primary, width: 1.6),
+        errorBorder: _fieldBorder(_AuthColors.error, width: 1.5),
+        focusedErrorBorder: _fieldBorder(_AuthColors.error, width: 1.6),
       ),
       validator: validator,
     );
@@ -452,25 +434,99 @@ class _ResetField extends StatelessWidget {
 
   OutlineInputBorder _fieldBorder(Color color, {double width = 1}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       borderSide: BorderSide(color: color, width: width),
     );
   }
 }
 
-class _ResetColors {
-  const _ResetColors._();
+class _VisibilityButton extends StatelessWidget {
+  const _VisibilityButton({required this.isObscured, required this.onPressed});
 
-  static const background = Color(0xFFF7F9FC);
+  final bool isObscured;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: isObscured
+          ? 'Afficher le mot de passe'
+          : 'Masquer le mot de passe',
+      onPressed: onPressed,
+      icon: Icon(
+        isObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        color: _AuthColors.muted,
+        size: 22,
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({
+    required this.isLoading,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final String label;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _AuthColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF9DB7EF),
+          disabledForegroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox.square(
+                dimension: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.8,
+                  color: Colors.white,
+                ),
+              )
+            : Text(label),
+      ),
+    );
+  }
+}
+
+class _AuthColors {
+  const _AuthColors._();
+
+  static const background = Color(0xFFF4F7FB);
   static const field = Color(0xFFF8FAFC);
   static const border = Color(0xFFE5EAF1);
   static const inputBorder = Color(0xFFE2E8F0);
   static const primary = Color(0xFF2563EB);
-  static const primarySoft = Color(0xFFEAF2FF);
   static const error = Color(0xFFE85D4F);
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const faint = Color(0xFF94A3B8);
+}
+
+String _resetDestination(String? email, String? organization) {
+  return [
+    if (email != null && email.isNotEmpty) email,
+    if (organization != null && organization.isNotEmpty) organization,
+  ].join(' - ');
 }
 
 String _tokenFromInput(String input) {
