@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../providers/catalog_provider.dart';
+import 'home_screen.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -17,8 +18,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   String _query = '';
   String? _selectedParentKey;
-  int _selectedTabIndex = _catalogTabIndex;
+  int _selectedTabIndex = _homeTabIndex;
 
+  static const _homeTabIndex = 0;
   static const _catalogTabIndex = 1;
 
   @override
@@ -87,9 +89,11 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: _selectedTabIndex == _catalogTabIndex
-            ? _buildCatalog()
-            : _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
+        child: switch (_selectedTabIndex) {
+          _homeTabIndex => const HomeScreen(),
+          _catalogTabIndex => _buildCatalog(),
+          _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
+        },
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTabIndex,
@@ -799,12 +803,7 @@ String? _categoryImageUrl(dynamic category) {
 
   for (final key in ['image', 'picture', 'thumbnail', 'imageUrl']) {
     final raw = _clean(category[key]);
-    if (raw == null) continue;
-
-    final uri = Uri.tryParse(raw);
-    return uri != null && uri.hasScheme
-        ? raw
-        : Uri.parse('https://agro.valomnia.com').resolve(raw).toString();
+    if (raw != null) return _absoluteTenantUrl(raw);
   }
 
   return null;
@@ -845,4 +844,11 @@ Map<dynamic, dynamic>? _parentCategory(dynamic category) {
 String? _clean(dynamic value) {
   final text = value?.toString().trim();
   return text == null || text.isEmpty || text == 'null' ? null : text;
+}
+
+String _absoluteTenantUrl(String value) {
+  final uri = Uri.tryParse(value);
+  return uri != null && uri.hasScheme
+      ? value
+      : Uri.parse('https://agro.valomnia.com').resolve(value).toString();
 }
