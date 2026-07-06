@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../cart/providers/cart_provider.dart';
 import '../data/catalog_api.dart';
 import '../providers/catalog_provider.dart';
 
@@ -237,6 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   return _ProductCard(
                     item: item,
                     onTap: () => _showProductDetails(item),
+                    onAddToCart: () => _addToCart(item),
                   );
                 },
               ),
@@ -268,6 +270,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       builder: (_) => _ProductDetailsSheet(item: item),
     );
+  }
+
+  void _addToCart(_ProductItem item) {
+    ref
+        .read(cartProvider.notifier)
+        .add(
+          CartProduct(
+            key: item.key,
+            name: item.name,
+            reference: item.reference,
+            imageUrl: item.imageUrl,
+            price: item.price,
+          ),
+        );
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${item.name} ajoute au panier'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 }
 
@@ -396,10 +422,15 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.item, required this.onTap});
+  const _ProductCard({
+    required this.item,
+    required this.onTap,
+    required this.onAddToCart,
+  });
 
   final _ProductItem item;
   final VoidCallback onTap;
+  final VoidCallback onAddToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +465,11 @@ class _ProductCard extends StatelessWidget {
                         top: 8,
                         child: _ProductBadge(item: item),
                       ),
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: _AddToCartButton(onPressed: onAddToCart),
+                    ),
                   ],
                 ),
               ),
@@ -497,6 +533,28 @@ class _ProductCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddToCartButton extends StatelessWidget {
+  const _AddToCartButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _HomeColors.primary,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: const SizedBox.square(
+          dimension: 34,
+          child: Icon(Icons.add_rounded, color: Colors.white, size: 22),
         ),
       ),
     );
