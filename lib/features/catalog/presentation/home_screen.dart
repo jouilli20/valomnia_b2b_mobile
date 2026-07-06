@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_constants.dart';
-import '../../cart/providers/cart_provider.dart';
 import '../data/catalog_api.dart';
 import '../providers/catalog_provider.dart';
 
@@ -260,6 +259,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _addToCart(_ProductItem item) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${item.name} ajoute au panier'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   void _showProductDetails(_ProductItem item) {
     showModalBottomSheet<void>(
       context: context,
@@ -270,30 +281,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       builder: (_) => _ProductDetailsSheet(item: item),
     );
-  }
-
-  void _addToCart(_ProductItem item) {
-    ref
-        .read(cartProvider.notifier)
-        .add(
-          CartProduct(
-            key: item.key,
-            name: item.name,
-            reference: item.reference,
-            imageUrl: item.imageUrl,
-            price: item.price,
-          ),
-        );
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${item.name} ajoute au panier'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
   }
 }
 

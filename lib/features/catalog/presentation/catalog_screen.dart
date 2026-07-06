@@ -147,7 +147,16 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+            sliver: SliverToBoxAdapter(
+              child: _CatalogHeader(
+                familyCount: hierarchy.groups.length,
+                subcategoryCount: hierarchy.subcategoryCount,
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             sliver: SliverToBoxAdapter(child: _buildSearchField()),
           ),
           if (hierarchy.groups.isEmpty)
@@ -172,7 +181,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             )
           else ...[
             _SectionTitle(
-              title: 'Categories',
+              title: 'Familles',
               subtitle: '${groups.length} familles',
             ),
             SliverToBoxAdapter(
@@ -184,7 +193,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             ),
             _SectionTitle(
               title: selectedGroup.parent.name,
-              subtitle: '${selectedGroup.children.length} sous-categories',
+              subtitle: selectedGroup.children.length == 1
+                  ? '1 sous-categorie'
+                  : '${selectedGroup.children.length} sous-categories',
             ),
             if (selectedGroup.children.isEmpty)
               const SliverFillRemaining(
@@ -222,8 +233,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       onChanged: (value) => setState(() => _query = value),
       style: const TextStyle(
         color: _CatalogColors.ink,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
       ),
       decoration: InputDecoration(
         hintText: 'Rechercher une categorie',
@@ -236,10 +247,10 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 icon: const Icon(Icons.close_rounded),
               ),
         filled: true,
-        fillColor: _CatalogColors.field,
+        fillColor: _CatalogColors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 16,
+          vertical: 15,
         ),
         border: _inputBorder(_CatalogColors.border),
         enabledBorder: _inputBorder(_CatalogColors.border),
@@ -259,6 +270,66 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   }
 }
 
+class _CatalogHeader extends StatelessWidget {
+  const _CatalogHeader({
+    required this.familyCount,
+    required this.subcategoryCount,
+  });
+
+  final int familyCount;
+  final int subcategoryCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: _CatalogColors.primarySoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.layers_rounded,
+            color: _CatalogColors.primary,
+            size: 23,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Catalogue categories',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _CatalogColors.ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$familyCount familles - $subcategoryCount sous-categories',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _CatalogColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ParentCategoryList extends StatelessWidget {
   const _ParentCategoryList({
     required this.groups,
@@ -273,7 +344,7 @@ class _ParentCategoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 146,
+      height: 128,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -306,37 +377,44 @@ class _ParentCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 112,
+      width: 136,
       child: Material(
-        color: selected ? _CatalogColors.primarySoft : _CatalogColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: _CatalogColors.surface,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: selected
                     ? _CatalogColors.primary
                     : _CatalogColors.border,
-                width: selected ? 1.4 : 1,
+                width: selected ? 1.5 : 1,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(
-                    height: 70,
-                    width: double.infinity,
-                    child: _CategoryImage(
-                      imageUrl: group.parent.imageUrl,
-                      icon: Icons.category_outlined,
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: SizedBox(
+                        height: 48,
+                        width: 48,
+                        child: _CategoryImage(
+                          imageUrl: group.parent.imageUrl,
+                          icon: Icons.category_outlined,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    _CountBadge(count: group.children.length),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -347,8 +425,8 @@ class _ParentCategoryTile extends StatelessWidget {
                     color: selected
                         ? _CatalogColors.primary
                         : _CatalogColors.ink,
-                    fontSize: 12.5,
-                    height: 1.08,
+                    fontSize: 13,
+                    height: 1.12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -370,15 +448,15 @@ class _SubcategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: _CatalogColors.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: () {},
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 70,
-          padding: const EdgeInsets.all(9),
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _CatalogColors.border),
           ),
           child: Row(
@@ -386,11 +464,12 @@ class _SubcategoryTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: SizedBox(
-                  width: 52,
-                  height: 52,
+                  width: 54,
+                  height: 54,
                   child: _CategoryImage(
                     imageUrl: category.imageUrl,
                     icon: Icons.inventory_2_outlined,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
@@ -426,10 +505,6 @@ class _SubcategoryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _CatalogColors.faint,
-              ),
             ],
           ),
         ),
@@ -439,22 +514,62 @@ class _SubcategoryTile extends StatelessWidget {
 }
 
 class _CategoryImage extends StatelessWidget {
-  const _CategoryImage({required this.imageUrl, required this.icon});
+  const _CategoryImage({
+    required this.imageUrl,
+    required this.icon,
+    this.fit = BoxFit.cover,
+  });
 
   final String? imageUrl;
   final IconData icon;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
     if (imageUrl == null) return _CategoryPlaceholder(icon: icon);
 
-    return Image.network(
-      imageUrl!,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => _CategoryPlaceholder(icon: icon),
-      loadingBuilder: (context, child, progress) {
-        return progress == null ? child : _CategoryPlaceholder(icon: icon);
-      },
+    return ColoredBox(
+      color: _CatalogColors.softSurface,
+      child: Padding(
+        padding: fit == BoxFit.contain
+            ? const EdgeInsets.all(6)
+            : EdgeInsets.zero,
+        child: Image.network(
+          imageUrl!,
+          fit: fit,
+          errorBuilder: (_, _, _) => _CategoryPlaceholder(icon: icon),
+          loadingBuilder: (context, child, progress) {
+            return progress == null ? child : _CategoryPlaceholder(icon: icon);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      decoration: BoxDecoration(
+        color: _CatalogColors.primarySoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        count.toString(),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: _CatalogColors.primary,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -594,6 +709,10 @@ class _CatalogHierarchy {
   const _CatalogHierarchy(this.groups);
 
   final List<_CategoryGroup> groups;
+
+  int get subcategoryCount {
+    return groups.fold(0, (total, group) => total + group.children.length);
+  }
 
   factory _CatalogHierarchy.from(List<dynamic> categories) {
     final byKey = <String, dynamic>{};
@@ -737,14 +856,12 @@ class _CatalogColors {
 
   static const background = Color(0xFFF4F7FB);
   static const surface = Colors.white;
-  static const field = Color(0xFFF8FAFC);
   static const softSurface = Color(0xFFF1F5F9);
   static const border = Color(0xFFE5EAF1);
   static const primary = Color(0xFF2563EB);
   static const primarySoft = Color(0xFFEAF2FF);
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
-  static const faint = Color(0xFF94A3B8);
 }
 
 const _tabs = [
