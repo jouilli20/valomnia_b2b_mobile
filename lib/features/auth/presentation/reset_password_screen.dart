@@ -2,31 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_repository_provider.dart';
-import 'reset_password_screen.dart';
 
-class ForgotPasswordScreen extends ConsumerStatefulWidget {
-  const ForgotPasswordScreen({super.key});
+class ResetPasswordScreen extends ConsumerStatefulWidget {
+  const ResetPasswordScreen({super.key, this.organization, this.email});
+
+  final String? organization;
+  final String? email;
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() =>
-      _ForgotPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() =>
+      _ResetPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _organizationController = TextEditingController(text: 'agro');
-  final _emailController = TextEditingController();
+  final _tokenController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
-    _organizationController.dispose();
-    _emailController.dispose();
+    _tokenController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendResetLink() async {
+  Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -34,34 +40,24 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       await ref
           .read(authRepositoryProvider)
-          .forgotPassword(
-            email: _emailController.text.trim(),
-            organization: _organizationController.text.trim(),
+          .resetPassword(
+            token: _tokenFromInput(_tokenController.text),
+            password: _passwordController.text.trim(),
           );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lien de réinitialisation envoyé par email.'),
-        ),
+        const SnackBar(content: Text('Mot de passe modifie avec succes.')),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResetPasswordScreen(
-            organization: _organizationController.text.trim(),
-            email: _emailController.text.trim(),
-          ),
-        ),
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de modifier le mot de passe : $e')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -84,7 +80,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           onPressed: _goBack,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: const Text('Mot de passe oublié'),
+        title: const Text('Nouveau mot de passe'),
         centerTitle: false,
         backgroundColor: _ResetColors.background,
         foregroundColor: _ResetColors.ink,
@@ -115,13 +111,31 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const _PageIntro(),
+                          _PageIntro(
+                            organization: widget.organization,
+                            email: widget.email,
+                          ),
                           const SizedBox(height: 28),
-                          _ResetForm(
+                          _ResetPasswordForm(
                             isLoading: _isLoading,
-                            organizationController: _organizationController,
-                            emailController: _emailController,
-                            onSubmit: _sendResetLink,
+                            tokenController: _tokenController,
+                            passwordController: _passwordController,
+                            confirmPasswordController:
+                                _confirmPasswordController,
+                            obscurePassword: _obscurePassword,
+                            obscureConfirmPassword: _obscureConfirmPassword,
+                            onTogglePassword: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            onToggleConfirmPassword: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                            onSubmit: _resetPassword,
                           ),
                         ],
                       ),
@@ -138,17 +152,25 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 }
 
 class _PageIntro extends StatelessWidget {
-  const _PageIntro();
+  const _PageIntro({required this.organization, required this.email});
+
+  final String? organization;
+  final String? email;
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    final destination = [
+      if (email != null && email!.isNotEmpty) email,
+      if (organization != null && organization!.isNotEmpty) organization,
+    ].whereType<String>().join(' - ');
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _BrandMark(),
-        SizedBox(height: 24),
-        Text(
-          'Réinitialiser votre mot de passe',
+        const _BrandMark(),
+        const SizedBox(height: 24),
+        const Text(
+          'Finaliser la reinitialisation',
           style: TextStyle(
             color: _ResetColors.ink,
             fontSize: 28,
@@ -156,10 +178,12 @@ class _PageIntro extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Text(
-          'Saisissez votre organisation et votre adresse e-mail. Vous recevrez un lien de réinitialisation.',
-          style: TextStyle(
+          destination.isEmpty
+              ? 'Saisissez le token recu par email puis choisissez un nouveau mot de passe.'
+              : 'Token envoye a $destination. Saisissez-le ici puis choisissez un nouveau mot de passe.',
+          style: const TextStyle(
             color: _ResetColors.muted,
             fontSize: 15.5,
             height: 1.45,
@@ -209,17 +233,27 @@ class _BrandMark extends StatelessWidget {
   }
 }
 
-class _ResetForm extends StatelessWidget {
-  const _ResetForm({
+class _ResetPasswordForm extends StatelessWidget {
+  const _ResetPasswordForm({
     required this.isLoading,
-    required this.organizationController,
-    required this.emailController,
+    required this.tokenController,
+    required this.passwordController,
+    required this.confirmPasswordController,
+    required this.obscurePassword,
+    required this.obscureConfirmPassword,
+    required this.onTogglePassword,
+    required this.onToggleConfirmPassword,
     required this.onSubmit,
   });
 
   final bool isLoading;
-  final TextEditingController organizationController;
-  final TextEditingController emailController;
+  final TextEditingController tokenController;
+  final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
+  final bool obscurePassword;
+  final bool obscureConfirmPassword;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onToggleConfirmPassword;
   final Future<void> Function() onSubmit;
 
   @override
@@ -235,23 +269,77 @@ class _ResetForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _ResetField(
-            controller: organizationController,
-            labelText: 'Organisation',
-            hintText: 'Nom de votre organisation',
-            icon: Icons.business_outlined,
+            controller: tokenController,
+            labelText: 'Token ou lien',
+            hintText: 'Token ou lien recu par email',
+            icon: Icons.key_rounded,
             textInputAction: TextInputAction.next,
-            validatorMessage: 'Organisation obligatoire',
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Token obligatoire'
+                : null,
           ),
           const SizedBox(height: 14),
           _ResetField(
-            controller: emailController,
-            labelText: 'Adresse e-mail',
-            hintText: 'exemple@entreprise.com',
-            icon: Icons.alternate_email_rounded,
-            keyboardType: TextInputType.emailAddress,
+            controller: passwordController,
+            labelText: 'Nouveau mot de passe',
+            hintText: 'Minimum 6 caracteres',
+            icon: Icons.lock_outline_rounded,
+            obscureText: obscurePassword,
+            textInputAction: TextInputAction.next,
+            suffixIcon: IconButton(
+              tooltip: obscurePassword
+                  ? 'Afficher le mot de passe'
+                  : 'Masquer le mot de passe',
+              onPressed: onTogglePassword,
+              icon: Icon(
+                obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: _ResetColors.muted,
+                size: 22,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Mot de passe obligatoire';
+              }
+              if (value.trim().length < 6) {
+                return 'Minimum 6 caracteres';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _ResetField(
+            controller: confirmPasswordController,
+            labelText: 'Confirmer le mot de passe',
+            hintText: 'Ressaisir le mot de passe',
+            icon: Icons.lock_reset_rounded,
+            obscureText: obscureConfirmPassword,
             textInputAction: TextInputAction.done,
-            validatorMessage: 'Adresse e-mail obligatoire',
             onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
+            suffixIcon: IconButton(
+              tooltip: obscureConfirmPassword
+                  ? 'Afficher le mot de passe'
+                  : 'Masquer le mot de passe',
+              onPressed: onToggleConfirmPassword,
+              icon: Icon(
+                obscureConfirmPassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: _ResetColors.muted,
+                size: 22,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Confirmation obligatoire';
+              }
+              if (value.trim() != passwordController.text.trim()) {
+                return 'Les mots de passe ne correspondent pas';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -281,7 +369,7 @@ class _ResetForm extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Envoyer '),
+                  : const Text('Modifier le mot de passe'),
             ),
           ),
         ],
@@ -295,28 +383,30 @@ class _ResetField extends StatelessWidget {
     required this.controller,
     required this.labelText,
     required this.hintText,
-    required this.validatorMessage,
+    required this.validator,
     required this.icon,
-    this.keyboardType,
     this.textInputAction,
+    this.obscureText = false,
+    this.suffixIcon,
     this.onFieldSubmitted,
   });
 
   final TextEditingController controller;
   final String labelText;
   final String hintText;
-  final String validatorMessage;
+  final FormFieldValidator<String> validator;
   final IconData icon;
-  final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
+  final bool obscureText;
+  final Widget? suffixIcon;
   final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType: keyboardType,
       textInputAction: textInputAction,
+      obscureText: obscureText,
       onFieldSubmitted: onFieldSubmitted,
       style: const TextStyle(
         color: _ResetColors.ink,
@@ -327,6 +417,7 @@ class _ResetField extends StatelessWidget {
         labelText: labelText,
         hintText: hintText,
         prefixIcon: Icon(icon, color: _ResetColors.muted, size: 21),
+        suffixIcon: suffixIcon,
         labelStyle: const TextStyle(
           color: _ResetColors.muted,
           fontSize: 14,
@@ -355,8 +446,7 @@ class _ResetField extends StatelessWidget {
         errorBorder: _fieldBorder(_ResetColors.error, width: 1.4),
         focusedErrorBorder: _fieldBorder(_ResetColors.error, width: 1.5),
       ),
-      validator: (value) =>
-          value == null || value.trim().isEmpty ? validatorMessage : null,
+      validator: validator,
     );
   }
 
@@ -381,4 +471,20 @@ class _ResetColors {
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const faint = Color(0xFF94A3B8);
+}
+
+String _tokenFromInput(String input) {
+  final value = input.trim();
+  final uri = Uri.tryParse(value);
+  var token = uri?.queryParameters['token'];
+
+  if ((token == null || token.isEmpty) && uri?.fragment.isNotEmpty == true) {
+    token = Uri.tryParse(uri!.fragment)?.queryParameters['token'];
+  }
+
+  if (token != null && token.isNotEmpty) {
+    return token;
+  }
+
+  return value;
 }

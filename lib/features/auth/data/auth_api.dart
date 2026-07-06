@@ -106,4 +106,27 @@ class AuthApi {
     debugPrint('$label ERROR DATA: ${error.response?.data}');
     debugPrint('$label ERROR MESSAGE: ${error.message}');
   }
+
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    try {
+      await _dio.put(
+        ApiConstants.resetPassword,
+        queryParameters: {'token': token},
+        data: {'password': password},
+        options: Options(
+          contentType: Headers.jsonContentType,
+          followRedirects: true,
+          responseType: ResponseType.plain,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
+        ),
+      );
+    } on DioException catch (error) {
+      _logDioError('RESET PASSWORD', error);
+      throw const AuthException('Token invalide ou expire.');
+    }
+  }
 }
