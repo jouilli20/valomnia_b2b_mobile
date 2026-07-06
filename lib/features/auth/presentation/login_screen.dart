@@ -374,7 +374,7 @@ class _LoginPanel extends StatelessWidget {
                       children: [
                         Text('Se connecter'),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, size: 21),
+
                       ],
                     ),
             ),
