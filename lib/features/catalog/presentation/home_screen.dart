@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../data/catalog_api.dart';
 import '../providers/catalog_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -18,7 +19,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
 
   final List<_ProductItem> _loadedMoreItems = [];
+  CatalogItemsPage? _lastPage;
+  Timer? _searchDebounce;
   String _query = '';
+  String _remoteQuery = '';
   int _nextOffset = catalogItemsPageSize;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -32,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -40,7 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   CatalogItemsQuery _itemsQuery({int offset = 0}) {
     return CatalogItemsQuery(
       offset: offset,
-      searchTerm: _query.trim().isEmpty ? null : _query.trim(),
+      searchTerm: _remoteQuery.trim().isEmpty ? null : _remoteQuery.trim(),
     );
   }
 
@@ -53,6 +58,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _handleSearchChanged(String value) {
     setState(() {
       _query = value;
+      _loadMoreError = null;
+    });
+
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 420), () {
+      if (!mounted) return;
+      setState(() {
+        _remoteQuery = _query.trim();
+        _loadedMoreItems.clear();
+        _nextOffset = catalogItemsPageSize;
+        _hasMore = true;
+        _isLoadingMore = false;
+        _loadMoreError = null;
+      });
+    });
+  }
+
+  void _applyImmediateSearch(String value) {
+    _searchDebounce?.cancel();
+    setState(() {
+      _query = value;
+      _remoteQuery = value.trim();
       _loadedMoreItems.clear();
       _nextOffset = catalogItemsPageSize;
       _hasMore = true;
@@ -63,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _clearSearch() {
     _searchController.clear();
-    _handleSearchChanged('');
+    _applyImmediateSearch('');
   }
 
   void _resetPagination() {
@@ -79,6 +106,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
+    if (_query.trim() != _remoteQuery.trim()) return;
     if (_scrollController.position.extentAfter < 520) {
       unawaited(_loadMoreItems());
     }
@@ -93,16 +121,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     try {
-      final rawItems = await ref.read(
+      final page = await ref.read(
         catalogItemsQueryProvider(_itemsQuery(offset: _nextOffset)).future,
       );
-      final items = _mapProducts(rawItems);
+      final items = _mapProducts(page.items);
 
       if (!mounted) return;
       setState(() {
         _loadedMoreItems.addAll(items);
-        _nextOffset += catalogItemsPageSize;
-        _hasMore = rawItems.length >= catalogItemsPageSize;
+        _nextOffset = page.offset + page.items.length;
+        _hasMore = _nextOffset < page.total;
       });
     } catch (error) {
       if (!mounted) return;
@@ -116,15 +144,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncItems = ref.watch(catalogItemsQueryProvider(_itemsQuery()));
+    final asyncPage = ref.watch(catalogItemsQueryProvider(_itemsQuery()));
 
-    return asyncItems.when(
-      loading: () => const _StateView(
-        icon: Icons.hourglass_top_rounded,
-        title: 'Chargement des articles',
-        message: 'Veuillez patienter.',
-        showProgress: true,
-      ),
+    return asyncPage.when(
+      loading: () {
+        final page = _lastPage;
+        return page == null
+            ? const _StateView(
+                icon: Icons.hourglass_top_rounded,
+                title: 'Chargement des articles',
+                message: 'Veuillez patienter.',
+                showProgress: true,
+              )
+            : _buildContent(page, isRefreshing: true);
+      },
       error: (error, _) => _StateView(
         icon: Icons.wifi_off_rounded,
         title: 'Impossible de charger les articles',
@@ -133,13 +166,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onAction: () =>
             ref.invalidate(catalogItemsQueryProvider(_itemsQuery())),
       ),
-      data: _buildContent,
+      data: (page) {
+        _lastPage = page;
+        return _buildContent(page);
+      },
     );
   }
 
-  Widget _buildContent(List<dynamic> rawItems) {
-    final initialItems = _mapProducts(rawItems);
+  Widget _buildContent(CatalogItemsPage page, {bool isRefreshing = false}) {
+    final initialItems = _mapProducts(page.items);
     final items = _mergeProducts(initialItems, _loadedMoreItems);
+    final visibleItems = _filterProducts(items, _query);
+    final displayTotal = _query.trim().isEmpty
+        ? page.total
+        : visibleItems.length;
+    final canLoadMore =
+        _query.trim() == _remoteQuery.trim() &&
+        _nextOffset < page.total &&
+        visibleItems.isNotEmpty;
 
     return RefreshIndicator(
       color: _HomeColors.primary,
@@ -154,13 +198,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _HomeHeader(
                 controller: _searchController,
                 query: _query,
-                itemCount: items.length,
+                itemCount: displayTotal,
+                isRefreshing:
+                    isRefreshing || _query.trim() != _remoteQuery.trim(),
                 onChanged: _handleSearchChanged,
                 onClear: _clearSearch,
               ),
             ),
           ),
-          if (items.isEmpty)
+          if (visibleItems.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _StateView(
@@ -179,7 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               sliver: SliverGrid.builder(
-                itemCount: items.length,
+                itemCount: visibleItems.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
@@ -187,7 +233,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   childAspectRatio: 0.66,
                 ),
                 itemBuilder: (context, index) {
-                  final item = items[index];
+                  final item = visibleItems[index];
                   return _ProductCard(
                     item: item,
                     onTap: () => _showProductDetails(item),
@@ -199,7 +245,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
               sliver: SliverToBoxAdapter(
                 child: _LoadMoreFooter(
-                  hasMore: _hasMore,
+                  hasMore: _hasMore && canLoadMore,
                   isLoading: _isLoadingMore,
                   error: _loadMoreError,
                   onRetry: _loadMoreItems,
@@ -230,6 +276,7 @@ class _HomeHeader extends StatelessWidget {
     required this.controller,
     required this.query,
     required this.itemCount,
+    required this.isRefreshing,
     required this.onChanged,
     required this.onClear,
   });
@@ -237,6 +284,7 @@ class _HomeHeader extends StatelessWidget {
   final TextEditingController controller;
   final String query;
   final int itemCount;
+  final bool isRefreshing;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
 
@@ -283,7 +331,9 @@ class _HomeHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '$itemCount articles disponibles',
+                      itemCount == 1
+                          ? '1 article disponible'
+                          : '$itemCount articles disponibles',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -298,6 +348,17 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         ),
+        if (isRefreshing) ...[
+          const SizedBox(height: 8),
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(99)),
+            child: LinearProgressIndicator(
+              minHeight: 3,
+              color: _HomeColors.primary,
+              backgroundColor: _HomeColors.primarySoft,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(
           controller: controller,
@@ -487,7 +548,7 @@ class _ProductImage extends StatelessWidget {
 
     return Image.network(
       imageUrl!,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       errorBuilder: (_, _, _) => const _ImagePlaceholder(),
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
@@ -854,6 +915,21 @@ class _ProductItem {
       labelColor: _labelColor(item),
     );
   }
+
+  bool matches(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    return [
+      name,
+      reference,
+      description,
+      category,
+      unit,
+      barcode,
+      price,
+    ].whereType<String>().any((value) => value.toLowerCase().contains(q));
+  }
 }
 
 class _HomeColors {
@@ -895,6 +971,12 @@ List<_ProductItem> _mergeProducts(
   }
 
   return items;
+}
+
+List<_ProductItem> _filterProducts(List<_ProductItem> items, String query) {
+  final q = query.trim();
+  if (q.isEmpty) return items;
+  return items.where((item) => item.matches(q)).toList(growable: false);
 }
 
 String _itemKey(dynamic item) {

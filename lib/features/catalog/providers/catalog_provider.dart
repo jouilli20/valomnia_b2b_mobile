@@ -82,18 +82,23 @@ final categoriesProvider = FutureProvider<List<dynamic>>((ref) async {
 });
 
 final catalogProvider = FutureProvider<List<dynamic>>((ref) async {
-  return _fetchCatalogItemsPage(ref);
+  final page = await _fetchCatalogItemsPage(ref);
+  return page.items;
 });
 
 final catalogItemsPageProvider = FutureProvider.family<List<dynamic>, int>((
   ref,
   offset,
 ) async {
-  return _fetchCatalogItemsPage(ref, offset: offset);
+  final page = await _fetchCatalogItemsPage(ref, offset: offset);
+  return page.items;
 });
 
 final catalogItemsQueryProvider =
-    FutureProvider.family<List<dynamic>, CatalogItemsQuery>((ref, query) async {
+    FutureProvider.family<CatalogItemsPage, CatalogItemsQuery>((
+      ref,
+      query,
+    ) async {
       return _fetchCatalogItemsPage(
         ref,
         offset: query.offset,
@@ -110,7 +115,7 @@ final catalogItemsQueryProvider =
       );
     });
 
-Future<List<dynamic>> _fetchCatalogItemsPage(
+Future<CatalogItemsPage> _fetchCatalogItemsPage(
   Ref ref, {
   int offset = 0,
   int max = catalogItemsPageSize,
@@ -140,7 +145,7 @@ Future<List<dynamic>> _fetchCatalogItemsPage(
     );
   }
 
-  return await catalogApi.getItems(
+  return await catalogApi.getItemsPage(
     customerId: customerId,
     offset: offset,
     max: max,
