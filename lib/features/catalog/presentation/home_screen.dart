@@ -19,6 +19,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
 
   final List<_ProductItem> _loadedMoreItems = [];
+  final Map<String, int> _cartQuantities = {};
   CatalogItemsPage? _lastPage;
   Timer? _searchDebounce;
   String _query = '';
@@ -237,7 +238,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   return _ProductCard(
                     item: item,
                     onTap: () => _showProductDetails(item),
-                    onAddToCart: () => _addToCart(item),
+                    quantity: _cartQuantities[item.key] ?? 0,
+                    onAddToCart: () => _incrementCartQuantity(item),
+                    onIncrement: () => _incrementCartQuantity(item),
+                    onDecrement: () => _decrementCartQuantity(item),
                   );
                 },
               ),
@@ -259,16 +263,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _addToCart(_ProductItem item) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${item.name} ajoute au panier'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+  void _incrementCartQuantity(_ProductItem item) {
+    setState(() {
+      _cartQuantities.update(
+        item.key,
+        (quantity) => quantity + 1,
+        ifAbsent: () => 1,
       );
+    });
+  }
+
+  void _decrementCartQuantity(_ProductItem item) {
+    setState(() {
+      final currentQuantity = _cartQuantities[item.key] ?? 0;
+      if (currentQuantity <= 1) {
+        _cartQuantities.remove(item.key);
+      } else {
+        _cartQuantities[item.key] = currentQuantity - 1;
+      }
+    });
   }
 
   void _showProductDetails(_ProductItem item) {
@@ -412,12 +425,18 @@ class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.item,
     required this.onTap,
+    required this.quantity,
     required this.onAddToCart,
+    required this.onIncrement,
+    required this.onDecrement,
   });
 
   final _ProductItem item;
   final VoidCallback onTap;
+  final int quantity;
   final VoidCallback onAddToCart;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
 
   @override
   Widget build(BuildContext context) {
@@ -457,6 +476,16 @@ class _ProductCard extends StatelessWidget {
                       top: 8,
                       child: _AddToCartButton(onPressed: onAddToCart),
                     ),
+                    if (quantity > 0)
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: _QuantityPopup(
+                          quantity: quantity,
+                          onIncrement: onIncrement,
+                          onDecrement: onDecrement,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -544,6 +573,93 @@ class _AddToCartButton extends StatelessWidget {
           child: Icon(Icons.add_rounded, color: Colors.white, size: 22),
         ),
       ),
+    );
+  }
+}
+
+class _QuantityPopup extends StatelessWidget {
+  const _QuantityPopup({
+    required this.quantity,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  final int quantity;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _HomeColors.primary,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 8,
+      shadowColor: const Color(0x332563EB),
+      child: Container(
+        height: 38,
+        constraints: const BoxConstraints(minWidth: 112),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF4F8DF7), _HomeColors.primary],
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _QuantityButton(
+              icon: Icons.remove_rounded,
+              tooltip: 'Retirer',
+              onPressed: onDecrement,
+            ),
+            SizedBox(
+              width: 32,
+              child: Text(
+                quantity.toString(),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            _QuantityButton(
+              icon: Icons.add_rounded,
+              tooltip: 'Ajouter',
+              onPressed: onIncrement,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuantityButton extends StatelessWidget {
+  const _QuantityButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+      padding: EdgeInsets.zero,
+      icon: Icon(icon, color: Colors.white, size: 22),
+      visualDensity: VisualDensity.compact,
     );
   }
 }
