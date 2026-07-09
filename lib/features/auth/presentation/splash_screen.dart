@@ -41,8 +41,16 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
-        child: CircularProgressIndicator(),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 42),
+          child: Image(
+            image: AssetImage('assets/images/valomnia_logo.png'),
+            fit: BoxFit.contain,
+            semanticLabel: 'Valomnia',
+          ),
+        ),
       ),
     );
   }
