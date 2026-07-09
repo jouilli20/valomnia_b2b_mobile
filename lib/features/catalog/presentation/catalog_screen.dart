@@ -15,24 +15,9 @@ class CatalogScreen extends ConsumerStatefulWidget {
 }
 
 class _CatalogScreenState extends ConsumerState<CatalogScreen> {
-  final _searchController = TextEditingController();
-
-  String _query = '';
   int _selectedTabIndex = _homeTabIndex;
 
   static const _homeTabIndex = 0;
-  static const _catalogTabIndex = 1;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _refreshCategories() async {
-    ref.invalidate(categoriesProvider);
-    await ref.read(categoriesProvider.future);
-  }
 
   Future<void> _logout() async {
     await SecureStorageService.logout();
@@ -41,11 +26,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() => _query = '');
   }
 
   void _selectTab(int index) {
@@ -85,8 +65,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         top: false,
         bottom: false,
         child: switch (_selectedTabIndex) {
-          _homeTabIndex => const HomeScreen(),
-          _catalogTabIndex => _buildCatalog(),
+          _homeTabIndex => const _CatalogContent(),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
       ),
@@ -108,8 +87,201 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       ),
     );
   }
+}
 
-  Widget _buildCatalog() {
+class _CatalogContent extends StatefulWidget {
+  const _CatalogContent();
+
+  @override
+  State<_CatalogContent> createState() => _CatalogContentState();
+}
+
+class _CatalogContentState extends State<_CatalogContent> {
+  int _selectedContentIndex = 0;
+
+  void _selectContent(int index) {
+    if (_selectedContentIndex == index) return;
+    setState(() => _selectedContentIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final extended = constraints.maxWidth >= 520;
+        return Row(
+          children: [
+            _CatalogSidebarX(
+              selectedIndex: _selectedContentIndex,
+              extended: extended,
+              onSelected: _selectContent,
+            ),
+            const VerticalDivider(width: 1, color: _CatalogColors.border),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedContentIndex,
+                children: const [HomeScreen(), _CatalogCategoriesView()],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CatalogSidebarX extends StatelessWidget {
+  const _CatalogSidebarX({
+    required this.selectedIndex,
+    required this.extended,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final bool extended;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: extended ? 156 : 72,
+      color: _CatalogColors.surface,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Column(
+            children: [
+              _CatalogSidebarXItem(
+                label: 'Articles',
+                icon: Icons.inventory_2_outlined,
+                selectedIcon: Icons.inventory_2_rounded,
+                selected: selectedIndex == 0,
+                extended: extended,
+                onTap: () => onSelected(0),
+              ),
+              const SizedBox(height: 8),
+              _CatalogSidebarXItem(
+                label: 'Categories',
+                icon: Icons.category_outlined,
+                selectedIcon: Icons.category_rounded,
+                selected: selectedIndex == 1,
+                extended: extended,
+                onTap: () => onSelected(1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogSidebarXItem extends StatelessWidget {
+  const _CatalogSidebarXItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.extended,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final bool extended;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? _CatalogColors.primary : _CatalogColors.muted;
+    final child = Material(
+      color: selected ? _CatalogColors.primarySoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 48,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: extended ? 12 : 0),
+            child: Row(
+              mainAxisAlignment: extended
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                Icon(selected ? selectedIcon : icon, color: foreground),
+                if (extended) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        label: label,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _CatalogCategoriesView extends ConsumerStatefulWidget {
+  const _CatalogCategoriesView();
+
+  @override
+  ConsumerState<_CatalogCategoriesView> createState() =>
+      _CatalogCategoriesViewState();
+}
+
+class _CatalogCategoriesViewState
+    extends ConsumerState<_CatalogCategoriesView> {
+  final _searchController = TextEditingController();
+
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshCategories() async {
+    ref.invalidate(categoriesProvider);
+    await ref.read(categoriesProvider.future);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _query = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ref
         .watch(categoriesProvider)
         .when(
@@ -142,15 +314,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-            sliver: SliverToBoxAdapter(
-              child: _CatalogHeader(
-                familyCount: hierarchy.groups.length,
-                subcategoryCount: hierarchy.subcategoryCount,
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             sliver: SliverToBoxAdapter(child: _buildSearchField()),
           ),
           if (hierarchy.groups.isEmpty)
@@ -174,14 +337,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
               ),
             )
           else ...[
-            _SectionTitle(
-              title: 'Categories',
-              subtitle: categories.length == 1
-                  ? '1 famille'
-                  : '${categories.length} familles',
-            ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               sliver: SliverList.separated(
                 itemCount: categories.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -226,66 +383,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         enabledBorder: _inputBorder(_CatalogColors.border),
         focusedBorder: _inputBorder(_CatalogColors.primary, width: 1.5),
       ),
-    );
-  }
-}
-
-class _CatalogHeader extends StatelessWidget {
-  const _CatalogHeader({
-    required this.familyCount,
-    required this.subcategoryCount,
-  });
-
-  final int familyCount;
-  final int subcategoryCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: _CatalogColors.primarySoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.layers_rounded,
-            color: _CatalogColors.primary,
-            size: 23,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Catalogue categories',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _CatalogColors.ink,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$familyCount familles - $subcategoryCount sous-categories',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _CatalogColors.muted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -507,48 +604,6 @@ class _CategoryPlaceholder extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      sliver: SliverToBoxAdapter(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _CatalogColors.ink,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _CatalogColors.muted,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _StateView extends StatelessWidget {
   const _StateView({
     required this.icon,
@@ -690,11 +745,6 @@ class _CatalogColors {
 }
 
 const _tabs = [
-  _CatalogTab(
-    label: 'Home',
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home_rounded,
-  ),
   _CatalogTab(
     label: 'Catalogue',
     icon: Icons.layers_outlined,
