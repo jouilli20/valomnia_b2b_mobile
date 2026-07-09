@@ -69,6 +69,8 @@ flutter:
   assets:
     - assets/images/valomnia_mark.png
     - assets/images/valomnia_logo.png
+    - assets/images/catalog_header.png
+    - assets/images/catalog_icon.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

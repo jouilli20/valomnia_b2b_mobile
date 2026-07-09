@@ -331,13 +331,15 @@ class _HomeHeader extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   color: _HomeColors.primarySoft,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: _HomeColors.primary,
+                child: Image.asset(
+                  'assets/images/catalog_icon.png',
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Catalogue produits',
                 ),
               ),
               const SizedBox(width: 12),
