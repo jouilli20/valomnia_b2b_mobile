@@ -160,10 +160,13 @@ class _HeroHeader extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(
-                  Icons.inventory_2_outlined,
-                  color: Color(0xFF2563EB),
-                  size: 31,
+                child: Padding(
+                  padding: const EdgeInsets.all(7),
+                  child: Image.asset(
+                    'assets/images/valomnia_mark.png',
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Valomnia',
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
