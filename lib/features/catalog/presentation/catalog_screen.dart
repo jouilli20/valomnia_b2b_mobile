@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../domain/category.dart';
 import '../providers/catalog_provider.dart';
 import 'home_screen.dart';
 
@@ -17,7 +18,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   final _searchController = TextEditingController();
 
   String _query = '';
-  String? _selectedParentKey;
   int _selectedTabIndex = _homeTabIndex;
 
   static const _homeTabIndex = 0;
@@ -51,11 +51,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   void _selectTab(int index) {
     if (_selectedTabIndex == index) return;
     setState(() => _selectedTabIndex = index);
-  }
-
-  void _selectParent(String key) {
-    if (_selectedParentKey == key) return;
-    setState(() => _selectedParentKey = key);
   }
 
   @override
@@ -137,8 +132,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   Widget _buildCategoryList(List<dynamic> rawCategories) {
     final hierarchy = _CatalogHierarchy.from(rawCategories);
-    final groups = hierarchy.filter(_query);
-    final selectedGroup = _selectedGroup(groups);
+    final categories = hierarchy.filter(_query);
 
     return RefreshIndicator(
       color: _CatalogColors.primary,
@@ -168,7 +162,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 message: 'Tirez vers le bas pour actualiser le catalogue.',
               ),
             )
-          else if (groups.isEmpty)
+          else if (categories.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _StateView(
@@ -181,45 +175,21 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             )
           else ...[
             _SectionTitle(
-              title: 'Familles',
-              subtitle: '${groups.length} familles',
+              title: 'Categories',
+              subtitle: categories.length == 1
+                  ? '1 famille'
+                  : '${categories.length} familles',
             ),
-            SliverToBoxAdapter(
-              child: _ParentCategoryList(
-                groups: groups,
-                selectedKey: selectedGroup!.parent.key,
-                onSelected: _selectParent,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverList.separated(
+                itemCount: categories.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  return _CategoryTreeTile(category: categories[index]);
+                },
               ),
             ),
-            _SectionTitle(
-              title: selectedGroup.parent.name,
-              subtitle: selectedGroup.children.length == 1
-                  ? '1 sous-categorie'
-                  : '${selectedGroup.children.length} sous-categories',
-            ),
-            if (selectedGroup.children.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: _StateView(
-                  icon: Icons.category_outlined,
-                  title: 'Aucune sous-categorie',
-                  message:
-                      'Cette categorie ne contient pas encore de niveau enfant.',
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverList.separated(
-                  itemCount: selectedGroup.children.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    return _SubcategoryTile(
-                      category: selectedGroup.children[index],
-                    );
-                  },
-                ),
-              ),
           ],
         ],
       ),
@@ -257,16 +227,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         focusedBorder: _inputBorder(_CatalogColors.primary, width: 1.5),
       ),
     );
-  }
-
-  _CategoryGroup? _selectedGroup(List<_CategoryGroup> groups) {
-    if (groups.isEmpty) return null;
-
-    for (final group in groups) {
-      if (group.parent.key == _selectedParentKey) return group;
-    }
-
-    return groups.first;
   }
 }
 
@@ -330,185 +290,144 @@ class _CatalogHeader extends StatelessWidget {
   }
 }
 
-class _ParentCategoryList extends StatelessWidget {
-  const _ParentCategoryList({
-    required this.groups,
-    required this.selectedKey,
-    required this.onSelected,
-  });
+class _CategoryTreeTile extends StatelessWidget {
+  const _CategoryTreeTile({required this.category, this.depth = 0});
 
-  final List<_CategoryGroup> groups;
-  final String selectedKey;
-  final ValueChanged<String> onSelected;
+  final Category category;
+  final int depth;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 128,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        itemCount: groups.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final group = groups[index];
-          return _ParentCategoryTile(
-            group: group,
-            selected: group.parent.key == selectedKey,
-            onTap: () => onSelected(group.parent.key),
-          );
-        },
-      ),
-    );
-  }
-}
+    final hasChildren = category.children.isNotEmpty;
+    final horizontalIndent = depth * 14.0;
 
-class _ParentCategoryTile extends StatelessWidget {
-  const _ParentCategoryTile({
-    required this.group,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _CategoryGroup group;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 136,
-      child: Material(
-        color: _CatalogColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected
-                    ? _CatalogColors.primary
-                    : _CatalogColors.border,
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: SizedBox(
-                        height: 48,
-                        width: 48,
-                        child: _CategoryImage(
-                          imageUrl: group.parent.imageUrl,
-                          icon: Icons.category_outlined,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    _CountBadge(count: group.children.length),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  group.parent.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected
-                        ? _CatalogColors.primary
-                        : _CatalogColors.ink,
-                    fontSize: 13,
-                    height: 1.12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SubcategoryTile extends StatelessWidget {
-  const _SubcategoryTile({required this.category});
-
-  final _CategoryItem category;
-
-  @override
-  Widget build(BuildContext context) {
     return Material(
       color: _CatalogColors.surface,
       borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 76),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _CatalogColors.border),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(
-                  width: 54,
-                  height: 54,
-                  child: _CategoryImage(
-                    imageUrl: category.imageUrl,
-                    icon: Icons.inventory_2_outlined,
-                    fit: BoxFit.contain,
-                  ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _CatalogColors.border),
+        ),
+        child: hasChildren
+            ? Theme(
+                data: Theme.of(context).copyWith(
+                  dividerColor: Colors.transparent,
+                  splashColor: _CatalogColors.primarySoft,
+                  highlightColor: _CatalogColors.primarySoft,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.fromLTRB(
+                    10 + horizontalIndent,
+                    8,
+                    10,
+                    8,
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                  iconColor: _CatalogColors.primary,
+                  collapsedIconColor: _CatalogColors.muted,
+                  leading: _CategoryAvatar(category: category),
+                  title: _CategoryTitle(category: category),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _CountBadge(count: category.children.length),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.expand_more_rounded),
+                    ],
+                  ),
                   children: [
-                    Text(
-                      category.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _CatalogColors.ink,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (category.description != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        category.description!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _CatalogColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    for (final child in category.children) ...[
+                      _CategoryTreeTile(category: child, depth: depth + 1),
+                      if (child != category.children.last)
+                        const SizedBox(height: 8),
                     ],
                   ],
                 ),
+              )
+            : InkWell(
+                onTap: () {},
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    10 + horizontalIndent,
+                    10,
+                    10,
+                    10,
+                  ),
+                  child: Row(
+                    children: [
+                      _CategoryAvatar(category: category),
+                      const SizedBox(width: 12),
+                      Expanded(child: _CategoryTitle(category: category)),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
+      ),
+    );
+  }
+}
+
+class _CategoryAvatar extends StatelessWidget {
+  const _CategoryAvatar({required this.category});
+
+  final Category category;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: 54,
+        height: 54,
+        child: _CategoryImage(
+          imageUrl: category.imageUrl,
+          icon: category.children.isEmpty
+              ? Icons.inventory_2_outlined
+              : Icons.category_outlined,
+          fit: BoxFit.contain,
         ),
       ),
+    );
+  }
+}
+
+class _CategoryTitle extends StatelessWidget {
+  const _CategoryTitle({required this.category});
+
+  final Category category;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          category.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: _CatalogColors.ink,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        if (category.description != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            category.description!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _CatalogColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -706,137 +625,41 @@ class _TabPlaceholder extends StatelessWidget {
 }
 
 class _CatalogHierarchy {
-  const _CatalogHierarchy(this.groups);
+  const _CatalogHierarchy(this.categories);
 
-  final List<_CategoryGroup> groups;
+  final List<Category> categories;
+
+  List<Category> get groups => categories;
 
   int get subcategoryCount {
-    return groups.fold(0, (total, group) => total + group.children.length);
+    return categories.fold(
+      0,
+      (total, category) => total + category.descendantCount,
+    );
   }
 
   factory _CatalogHierarchy.from(List<dynamic> categories) {
-    final byKey = <String, dynamic>{};
-    for (final category in categories) {
-      final key = _categoryKey(category);
-      if (key != null) byKey[key] = category;
-    }
-
-    final mutableGroups = <String, _MutableCategoryGroup>{};
-
-    _MutableCategoryGroup ensureGroup(String key, dynamic source) {
-      return mutableGroups.putIfAbsent(
-        key,
-        () => _MutableCategoryGroup(
-          parent: _CategoryItem.from(source, fallbackKey: key),
-        ),
-      );
-    }
-
-    for (final category in categories) {
-      final categoryKey = _categoryKey(category);
-      if (categoryKey == null) continue;
-
-      final parentKey = _parentKey(category);
-      if (parentKey == null || parentKey == categoryKey) {
-        ensureGroup(categoryKey, category);
-        continue;
-      }
-
-      final parentSource =
-          _parentCategory(category) ??
-          byKey[parentKey] ??
-          _fallbackParent(parentKey);
-      ensureGroup(
-        parentKey,
-        parentSource,
-      ).addChild(_CategoryItem.from(category, fallbackKey: categoryKey));
-    }
-
-    final groups = mutableGroups.values
-        .map((group) => group.freeze())
-        .where((group) => group.parent.name.trim().isNotEmpty)
-        .toList(growable: false);
-
-    return _CatalogHierarchy(groups);
+    return _CatalogHierarchy(_withoutHomeRoot(buildCategoryTree(categories)));
   }
 
-  List<_CategoryGroup> filter(String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return groups;
-
-    return groups
-        .map((group) {
-          final parentMatches = group.parent.matches(q);
-          final children = parentMatches
-              ? group.children
-              : group.children.where((child) => child.matches(q)).toList();
-
-          return parentMatches || children.isNotEmpty
-              ? _CategoryGroup(parent: group.parent, children: children)
-              : null;
-        })
-        .whereType<_CategoryGroup>()
-        .toList(growable: false);
-  }
-
-  static Map<String, String> _fallbackParent(String key) {
-    final id = key.startsWith('id:') ? key.substring(3) : key;
-    return {'id': id, 'name': 'Categorie $id'};
+  List<Category> filter(String query) {
+    return filterCategoryTree(categories, query);
   }
 }
 
-class _MutableCategoryGroup {
-  _MutableCategoryGroup({required this.parent});
+List<Category> _withoutHomeRoot(List<Category> categories) {
+  final visibleCategories = <Category>[];
 
-  _CategoryItem parent;
-  final children = <_CategoryItem>[];
-  final _childKeys = <String>{};
-
-  void addChild(_CategoryItem child) {
-    if (_childKeys.add(child.key)) children.add(child);
+  for (final category in categories) {
+    final isHomeRoot = category.name.trim().toLowerCase() == 'home';
+    if (isHomeRoot) {
+      visibleCategories.addAll(category.children);
+    } else {
+      visibleCategories.add(category);
+    }
   }
 
-  _CategoryGroup freeze() {
-    return _CategoryGroup(
-      parent: parent,
-      children: List.unmodifiable(children),
-    );
-  }
-}
-
-class _CategoryGroup {
-  const _CategoryGroup({required this.parent, required this.children});
-
-  final _CategoryItem parent;
-  final List<_CategoryItem> children;
-}
-
-class _CategoryItem {
-  const _CategoryItem({
-    required this.key,
-    required this.name,
-    required this.description,
-    required this.imageUrl,
-  });
-
-  final String key;
-  final String name;
-  final String? description;
-  final String? imageUrl;
-
-  factory _CategoryItem.from(dynamic category, {required String fallbackKey}) {
-    return _CategoryItem(
-      key: _categoryKey(category) ?? fallbackKey,
-      name: _categoryName(category),
-      description: _categoryDescription(category),
-      imageUrl: _categoryImageUrl(category),
-    );
-  }
-
-  bool matches(String query) {
-    return name.toLowerCase().contains(query) ||
-        (description?.toLowerCase().contains(query) ?? false);
-  }
+  return List.unmodifiable(visibleCategories);
 }
 
 class _CatalogTab {
@@ -897,75 +720,4 @@ OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
     borderRadius: BorderRadius.circular(16),
     borderSide: BorderSide(color: color, width: width),
   );
-}
-
-String _categoryName(dynamic category) {
-  if (category is! Map) return 'Categorie';
-  return _clean(category['name']) ?? 'Categorie';
-}
-
-String? _categoryDescription(dynamic category) {
-  if (category is! Map) return null;
-
-  for (final key in ['description', 'shortDescription', 'code', 'reference']) {
-    final value = _clean(category[key]);
-    if (value != null) return value;
-  }
-
-  return null;
-}
-
-String? _categoryImageUrl(dynamic category) {
-  if (category is! Map) return null;
-
-  for (final key in ['image', 'picture', 'thumbnail', 'imageUrl']) {
-    final raw = _clean(category[key]);
-    if (raw != null) return _absoluteTenantUrl(raw);
-  }
-
-  return null;
-}
-
-String? _categoryKey(dynamic category) {
-  if (category is! Map) return null;
-
-  for (final entry in const [
-    MapEntry('id', 'id'),
-    MapEntry('href', 'href'),
-    MapEntry('reference', 'ref'),
-    MapEntry('name', 'name'),
-  ]) {
-    final value = _clean(category[entry.key]);
-    if (value != null) return '${entry.value}:$value';
-  }
-
-  return null;
-}
-
-String? _parentKey(dynamic category) {
-  if (category is! Map) return null;
-
-  final nestedParentKey = _categoryKey(_parentCategory(category));
-  if (nestedParentKey != null) return nestedParentKey;
-
-  final parentId = _clean(category['parentId']);
-  return parentId == null ? null : 'id:$parentId';
-}
-
-Map<dynamic, dynamic>? _parentCategory(dynamic category) {
-  if (category is! Map) return null;
-  final parent = category['parentCategory'];
-  return parent is Map ? parent : null;
-}
-
-String? _clean(dynamic value) {
-  final text = value?.toString().trim();
-  return text == null || text.isEmpty || text == 'null' ? null : text;
-}
-
-String _absoluteTenantUrl(String value) {
-  final uri = Uri.tryParse(value);
-  return uri != null && uri.hasScheme
-      ? value
-      : Uri.parse('https://agro.valomnia.com').resolve(value).toString();
 }

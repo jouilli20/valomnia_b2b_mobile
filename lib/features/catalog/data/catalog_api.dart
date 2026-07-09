@@ -11,7 +11,10 @@ class CatalogApi {
   Future<List<dynamic>> getCategories() async {
     final response = await _dio.get(
       ApiConstants.itemCategories,
-      queryParameters: {'baseUrl': ApiConstants.tenantBaseUrl},
+      queryParameters: {
+        'baseUrl': ApiConstants.tenantBaseUrl,
+        'active': true,
+      },
     );
 
     log('CATEGORIES STATUS: ${response.statusCode}', name: 'CatalogApi');
