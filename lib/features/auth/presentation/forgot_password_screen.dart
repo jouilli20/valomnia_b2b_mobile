@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_repository_provider.dart';
-import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -31,6 +30,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       await ref
           .read(authRepositoryProvider)
@@ -41,25 +42,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Lien de reinitialisation envoye.')),
       );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResetPasswordScreen(
-            organization: _organizationController.text.trim(),
-            email: _emailController.text.trim(),
-          ),
-        ),
-      );
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -100,7 +90,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                             icon: Icons.lock_reset_rounded,
                             title: 'Mot de passe oublie',
                             subtitle:
-                                'Indiquez votre organisation et votre e-mail pour recevoir le lien de securite.',
+                                'Indiquez votre organisation et votre e-mail. Le changement du mot de passe se fait ensuite sur le web.',
                           ),
                           const SizedBox(height: 22),
                           _ForgotPasswordPanel(

@@ -337,7 +337,7 @@ class _LoginPanel extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              child: const Text('Mot de passe oublié ?'),
+              child: const Text('Mot de passe oublie ?'),
             ),
           ),
           const SizedBox(height: 14),
@@ -371,11 +371,7 @@ class _LoginPanel extends StatelessWidget {
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Se connecter'),
-                        SizedBox(width: 8),
-
-                      ],
+                      children: [Text('Se connecter'), SizedBox(width: 8)],
                     ),
             ),
           ),

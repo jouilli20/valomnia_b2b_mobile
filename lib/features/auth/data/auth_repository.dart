@@ -20,13 +20,4 @@ class AuthRepository {
       organization: organization,
     );
   }
-  Future<void> resetPassword({
-    required String token,
-    required String password,
-  }) async {
-    return _authApi.resetPassword(
-      token: token,
-      password: password,
-    );
-  }
 }

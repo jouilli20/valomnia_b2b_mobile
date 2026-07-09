@@ -21,7 +21,6 @@ class ApiConstants {
   static const String updateUser = 'update-user';
   static const String userCheck = 'user/check';
   static const String forgotPassword = 'forgot-password';
-  static const String resetPassword = 'reset-password';
 
   // ==========================
   // Catalog
