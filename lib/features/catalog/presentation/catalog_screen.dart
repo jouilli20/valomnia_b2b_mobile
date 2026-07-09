@@ -639,7 +639,9 @@ class _CatalogHierarchy {
   }
 
   factory _CatalogHierarchy.from(List<dynamic> categories) {
-    return _CatalogHierarchy(_withoutHomeRoot(buildCategoryTree(categories)));
+    return _CatalogHierarchy(
+      _withoutHomeRoot(buildCategoryTree(categories, activeOnly: true)),
+    );
   }
 
   List<Category> filter(String query) {

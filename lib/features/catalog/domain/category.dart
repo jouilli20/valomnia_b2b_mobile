@@ -39,13 +39,16 @@ class Category {
   }
 }
 
-List<Category> buildCategoryTree(List<dynamic> rawCategories) {
+List<Category> buildCategoryTree(
+  List<dynamic> rawCategories, {
+  bool activeOnly = false,
+}) {
   final byId = <String, Category>{};
   final orderedIds = <String>[];
 
   for (final rawCategory in rawCategories) {
     if (rawCategory is! Map) continue;
-    if (!_isActive(rawCategory)) continue;
+    if (activeOnly && !_isActive(rawCategory)) continue;
 
     final category = Category.fromJson(rawCategory);
     if (category.id.isEmpty) continue;
@@ -56,7 +59,7 @@ List<Category> buildCategoryTree(List<dynamic> rawCategories) {
     if (parent == null) continue;
 
     final parentCategory = Category.fromJson(parent);
-    if (parentCategory.id.isNotEmpty && _isActive(parent)) {
+    if (parentCategory.id.isNotEmpty && (!activeOnly || _isActive(parent))) {
       _upsertCategory(parentCategory, byId, orderedIds);
     }
   }
@@ -187,7 +190,7 @@ Map<dynamic, dynamic>? _parentCategory(Map<dynamic, dynamic> category) {
 }
 
 bool _isActive(Map<dynamic, dynamic> category) {
-  final value = category['active'];
+  final value = category['active'] ?? category['isActive'];
   if (value == null) return true;
   if (value is bool) return value;
   if (value is num) return value != 0;

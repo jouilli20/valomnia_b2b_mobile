@@ -34,13 +34,13 @@ void main() {
     expect(filtered.first.children.single.children.single.name, 'Pomme rouge');
   });
 
-  test('buildCategoryTree ignores categories where active is false', () {
+  test('buildCategoryTree ignores inactive categories when activeOnly is true', () {
     final tree = buildCategoryTree([
       {'id': 1, 'name': 'Fruits', 'active': true},
       {'id': 2, 'name': 'Pommes', 'parentId': 1, 'active': true},
       {'id': 3, 'name': 'Ancienne categorie', 'parentId': 1, 'active': false},
-      {'id': 4, 'name': 'Archive', 'active': 'false'},
-    ]);
+      {'id': 4, 'name': 'Archive', 'isActive': 'false'},
+    ], activeOnly: true);
 
     expect(tree, hasLength(1));
     expect(tree.single.name, 'Fruits');
