@@ -225,23 +225,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           else ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              sliver: SliverGrid.builder(
-                itemCount: visibleItems.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.66,
-                ),
-                itemBuilder: (context, index) {
-                  final item = visibleItems[index];
-                  return _ProductCard(
-                    item: item,
-                    onTap: () => _showProductDetails(item),
-                    quantity: _cartQuantities[item.key] ?? 0,
-                    onAddToCart: () => _incrementCartQuantity(item),
-                    onIncrement: () => _incrementCartQuantity(item),
-                    onDecrement: () => _decrementCartQuantity(item),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final columnCount = _responsiveGridColumnCount(
+                    constraints.crossAxisExtent,
+                  );
+
+                  return SliverGrid.builder(
+                    itemCount: visibleItems.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columnCount,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.66,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = visibleItems[index];
+                      return _ProductCard(
+                        item: item,
+                        onTap: () => _showProductDetails(item),
+                        quantity: _cartQuantities[item.key] ?? 0,
+                        onAddToCart: () => _incrementCartQuantity(item),
+                        onIncrement: () => _incrementCartQuantity(item),
+                        onDecrement: () => _decrementCartQuantity(item),
+                      );
+                    },
                   );
                 },
               ),
@@ -1140,6 +1148,14 @@ List<_ProductItem> _filterProducts(List<_ProductItem> items, String query) {
   final q = query.trim();
   if (q.isEmpty) return items;
   return items.where((item) => item.matches(q)).toList(growable: false);
+}
+
+int _responsiveGridColumnCount(double width) {
+  if (width >= 1180) return 6;
+  if (width >= 960) return 5;
+  if (width >= 720) return 4;
+  if (width >= 520) return 3;
+  return 2;
 }
 
 String _itemKey(dynamic item) {
