@@ -16,6 +16,7 @@ class CatalogScreen extends ConsumerStatefulWidget {
 
 class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   int _selectedTabIndex = _homeTabIndex;
+  int _selectedContentIndex = 0;
 
   static const _homeTabIndex = 0;
 
@@ -33,12 +34,26 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     setState(() => _selectedTabIndex = index);
   }
 
+  void _selectContent(int index) {
+    if (_selectedTabIndex == _homeTabIndex && _selectedContentIndex == index) {
+      return;
+    }
+    setState(() {
+      _selectedTabIndex = _homeTabIndex;
+      _selectedContentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _tabs[_selectedTabIndex].label;
 
     return Scaffold(
       backgroundColor: _CatalogColors.background,
+      drawer: _CatalogDrawer(
+        selectedIndex: _selectedContentIndex,
+        onSelected: _selectContent,
+      ),
       appBar: AppBar(
         title: Text(title),
         centerTitle: false,
@@ -65,7 +80,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         top: false,
         bottom: false,
         child: switch (_selectedTabIndex) {
-          _homeTabIndex => const _CatalogContent(),
+          _homeTabIndex => _CatalogContent(
+            selectedIndex: _selectedContentIndex,
+          ),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
       ),
@@ -89,104 +106,78 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   }
 }
 
-class _CatalogContent extends StatefulWidget {
-  const _CatalogContent();
+class _CatalogContent extends StatelessWidget {
+  const _CatalogContent({required this.selectedIndex});
 
-  @override
-  State<_CatalogContent> createState() => _CatalogContentState();
-}
-
-class _CatalogContentState extends State<_CatalogContent> {
-  int _selectedContentIndex = 0;
-
-  void _selectContent(int index) {
-    if (_selectedContentIndex == index) return;
-    setState(() => _selectedContentIndex = index);
-  }
+  final int selectedIndex;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final extended = constraints.maxWidth >= 520;
-        return Row(
-          children: [
-            _CatalogSidebarX(
-              selectedIndex: _selectedContentIndex,
-              extended: extended,
-              onSelected: _selectContent,
-            ),
-            const VerticalDivider(width: 1, color: _CatalogColors.border),
-            Expanded(
-              child: IndexedStack(
-                index: _selectedContentIndex,
-                children: const [HomeScreen(), _CatalogCategoriesView()],
-              ),
-            ),
-          ],
-        );
-      },
+    return IndexedStack(
+      index: selectedIndex,
+      children: const [HomeScreen(), _CatalogCategoriesView()],
     );
   }
 }
 
-class _CatalogSidebarX extends StatelessWidget {
-  const _CatalogSidebarX({
-    required this.selectedIndex,
-    required this.extended,
-    required this.onSelected,
-  });
+class _CatalogDrawer extends StatelessWidget {
+  const _CatalogDrawer({required this.selectedIndex, required this.onSelected});
 
   final int selectedIndex;
-  final bool extended;
   final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      width: extended ? 156 : 72,
-      color: _CatalogColors.surface,
+    return Drawer(
+      backgroundColor: _CatalogColors.surface,
+      surfaceTintColor: Colors.transparent,
       child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Column(
-            children: [
-              _CatalogSidebarXItem(
-                label: 'Articles',
-                icon: Icons.inventory_2_outlined,
-                selectedIcon: Icons.inventory_2_rounded,
-                selected: selectedIndex == 0,
-                extended: extended,
-                onTap: () => onSelected(0),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
+              child: Text(
+                'Catalogue',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: _CatalogColors.ink,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-              const SizedBox(height: 8),
-              _CatalogSidebarXItem(
-                label: 'Categories',
-                icon: Icons.category_outlined,
-                selectedIcon: Icons.category_rounded,
-                selected: selectedIndex == 1,
-                extended: extended,
-                onTap: () => onSelected(1),
-              ),
-            ],
-          ),
+            ),
+            _CatalogDrawerItem(
+              label: 'Articles',
+              icon: Icons.inventory_2_outlined,
+              selectedIcon: Icons.inventory_2_rounded,
+              selected: selectedIndex == 0,
+              onTap: () => _selectAndClose(context, 0),
+            ),
+            const SizedBox(height: 4),
+            _CatalogDrawerItem(
+              label: 'Categories',
+              icon: Icons.category_outlined,
+              selectedIcon: Icons.category_rounded,
+              selected: selectedIndex == 1,
+              onTap: () => _selectAndClose(context, 1),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  void _selectAndClose(BuildContext context, int index) {
+    Navigator.pop(context);
+    onSelected(index);
+  }
 }
 
-class _CatalogSidebarXItem extends StatelessWidget {
-  const _CatalogSidebarXItem({
+class _CatalogDrawerItem extends StatelessWidget {
+  const _CatalogDrawerItem({
     required this.label,
     required this.icon,
     required this.selectedIcon,
     required this.selected,
-    required this.extended,
     required this.onTap,
   });
 
@@ -194,57 +185,49 @@ class _CatalogSidebarXItem extends StatelessWidget {
   final IconData icon;
   final IconData selectedIcon;
   final bool selected;
-  final bool extended;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final foreground = selected ? _CatalogColors.primary : _CatalogColors.muted;
-    final child = Material(
-      color: selected ? _CatalogColors.primarySoft : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 48,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: extended ? 12 : 0),
-            child: Row(
-              mainAxisAlignment: extended
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.center,
-              children: [
-                Icon(selected ? selectedIcon : icon, color: foreground),
-                if (extended) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
     return Tooltip(
       message: label,
       child: Semantics(
         selected: selected,
         button: true,
         label: label,
-        child: child,
+        child: Material(
+          color: selected ? _CatalogColors.primarySoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(selected ? selectedIcon : icon, color: foreground),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
