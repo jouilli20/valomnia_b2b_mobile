@@ -43,7 +43,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return CatalogItemsQuery(
       offset: offset,
       isNew: _selectedFilter.isNew ? true : null,
-      isPromo: _selectedFilter.isPromo ? true : null,
     );
   }
 
@@ -1092,7 +1091,6 @@ class _ProductFilter {
 
   String get apiKey {
     if (isNew) return 'new';
-    if (isPromo) return 'promo';
     return 'all';
   }
 
@@ -1161,7 +1159,7 @@ class _ProductItem {
   bool matchesFilter(_ProductFilter filter) {
     if (filter == _ProductFilter.all) return true;
     if (filter.isNew) return isNew;
-    if (filter.isPromo) return isPromo;
+    if (filter == _ProductFilter.promo) return _isPromoProduct(this);
     if (filter == _ProductFilter.labelNameGroup) {
       return _isGroupedLabelName(labelName);
     }
@@ -1452,6 +1450,10 @@ String? _clean(dynamic value) {
 bool _isGroupedLabelName(String? labelName) {
   final value = labelName?.trim().toLowerCase();
   return value == 'focus' || value == 'retour';
+}
+
+bool _isPromoProduct(_ProductItem item) {
+  return item.isPromo || item.labelName?.trim().toLowerCase() == 'promo';
 }
 
 String? _namedValue(dynamic value) {
