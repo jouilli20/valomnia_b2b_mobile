@@ -56,15 +56,15 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       ),
       appBar: AppBar(
         title: Text(title),
-        centerTitle: false,
+        centerTitle: true,
         backgroundColor: _CatalogColors.background,
-        foregroundColor: _CatalogColors.ink,
+        foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         titleTextStyle: const TextStyle(
-          color: _CatalogColors.ink,
-          fontSize: 24,
+          color: Colors.white,
+          fontSize: 26,
           fontWeight: FontWeight.w900,
         ),
         actions: [
@@ -717,7 +717,7 @@ class _CatalogTab {
 class _CatalogColors {
   const _CatalogColors._();
 
-  static const background = Color(0xFFF4F7FB);
+  static const background = Color(0xFF031126);
   static const surface = Colors.white;
   static const softSurface = Color(0xFFF1F5F9);
   static const border = Color(0xFFE5EAF1);

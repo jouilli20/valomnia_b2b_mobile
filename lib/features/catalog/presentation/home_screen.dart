@@ -180,92 +180,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     final canLoadMore = _nextOffset < page.total && visibleItems.isNotEmpty;
 
-    return RefreshIndicator(
-      color: _HomeColors.primary,
-      onRefresh: _refreshItems,
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            sliver: SliverToBoxAdapter(
-              child: _HomeHeader(
-                searchController: _searchController,
-                searchQuery: _searchQuery,
-                filters: filters,
-                selectedFilter: _selectedFilter,
-                isRefreshing: isRefreshing,
-                onSearchChanged: _handleSearchChanged,
-                onClearSearch: _clearSearch,
-                onFilterSelected: _selectFilter,
-              ),
-            ),
-          ),
-          if (showLoadingState)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: _StateView(
-                icon: Icons.hourglass_top_rounded,
-                title: 'Chargement des articles',
-                message: 'Veuillez patienter.',
-                showProgress: true,
-              ),
-            )
-          else if (visibleItems.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _StateView(
-                icon: Icons.inventory_2_outlined,
-                title: 'Aucun article trouve',
-                message: 'Tirez vers le bas pour actualiser les articles.',
-              ),
-            )
-          else ...[
+    return ColoredBox(
+      color: _HomeColors.background,
+      child: RefreshIndicator(
+        color: _HomeColors.primary,
+        onRefresh: _refreshItems,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final columnCount = _responsiveGridColumnCount(
-                    constraints.crossAxisExtent,
-                  );
-
-                  return SliverGrid.builder(
-                    itemCount: visibleItems.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columnCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.66,
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = visibleItems[index];
-                      return _ProductCard(
-                        item: item,
-                        onTap: () => _showProductDetails(item),
-                        quantity: _cartQuantities[item.key] ?? 0,
-                        onAddToCart: () => _incrementCartQuantity(item),
-                        onIncrement: () => _incrementCartQuantity(item),
-                        onDecrement: () => _decrementCartQuantity(item),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               sliver: SliverToBoxAdapter(
-                child: _LoadMoreFooter(
-                  hasMore: _hasMore && canLoadMore,
-                  isLoading: _isLoadingMore,
-                  error: _loadMoreError,
-                  onRetry: _loadMoreItems,
+                child: _HomeHeader(
+                  searchController: _searchController,
+                  searchQuery: _searchQuery,
+                  filters: filters,
+                  selectedFilter: _selectedFilter,
+                  isRefreshing: isRefreshing,
+                  onSearchChanged: _handleSearchChanged,
+                  onClearSearch: _clearSearch,
+                  onFilterSelected: _selectFilter,
                 ),
               ),
             ),
+            if (showLoadingState)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _StateView(
+                  icon: Icons.hourglass_top_rounded,
+                  title: 'Chargement des articles',
+                  message: 'Veuillez patienter.',
+                  showProgress: true,
+                ),
+              )
+            else if (visibleItems.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _StateView(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Aucun article trouve',
+                  message: 'Tirez vers le bas pour actualiser les articles.',
+                ),
+              )
+            else ...[
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final columnCount = _responsiveGridColumnCount(
+                      constraints.crossAxisExtent,
+                    );
+
+                    return SliverGrid.builder(
+                      itemCount: visibleItems.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columnCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.66,
+                      ),
+                      itemBuilder: (context, index) {
+                        final item = visibleItems[index];
+                        return _ProductCard(
+                          item: item,
+                          onTap: () => _showProductDetails(item),
+                          quantity: _cartQuantities[item.key] ?? 0,
+                          onAddToCart: () => _incrementCartQuantity(item),
+                          onIncrement: () => _incrementCartQuantity(item),
+                          onDecrement: () => _decrementCartQuantity(item),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+                sliver: SliverToBoxAdapter(
+                  child: _LoadMoreFooter(
+                    hasMore: _hasMore && canLoadMore,
+                    isLoading: _isLoadingMore,
+                    error: _loadMoreError,
+                    onRetry: _loadMoreItems,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -333,19 +336,67 @@ class _HomeHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _HomeColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _HomeColors.border),
+            color: _HomeColors.darkPanel,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _HomeColors.darkBorder),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000A18),
+                blurRadius: 24,
+                offset: Offset(0, 12),
+              ),
+            ],
           ),
-          child: Center(
-            child: Image.asset(
-              'assets/images/organization_mark.png',
-              height: 56,
-              fit: BoxFit.contain,
-              semanticLabel: 'Organisation',
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 78,
+                height: 78,
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _HomeColors.success, width: 2),
+                ),
+                child: Image.asset(
+                  'assets/images/organization_mark.png',
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Organisation',
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bienvenue',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _HomeColors.success,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Decouvrez nos produits et profitez des meilleures offres',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _HomeColors.lightText,
+                        fontSize: 13.5,
+                        height: 1.28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         if (isRefreshing) ...[
@@ -363,12 +414,12 @@ class _HomeHeader extends StatelessWidget {
         Container(
           height: 54,
           decoration: BoxDecoration(
-            color: _HomeColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _HomeColors.border),
+            color: _HomeColors.darkField,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _HomeColors.darkBorder),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x0F2563EB),
+                color: Color(0x55000614),
                 blurRadius: 18,
                 offset: Offset(0, 8),
               ),
@@ -379,20 +430,20 @@ class _HomeHeader extends StatelessWidget {
             textInputAction: TextInputAction.search,
             onChanged: onSearchChanged,
             style: const TextStyle(
-              color: _HomeColors.ink,
+              color: _HomeColors.lightText,
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
             ),
             decoration: InputDecoration(
-              hintText: 'Rechercher un produit',
+              hintText: 'Rechercher un produit, une categorie...',
               hintStyle: const TextStyle(
-                color: _HomeColors.muted,
+                color: _HomeColors.lightMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
               prefixIcon: const Icon(
                 Icons.search_rounded,
-                color: _HomeColors.ink,
+                color: _HomeColors.lightMuted,
                 size: 25,
               ),
               suffixIcon: searchQuery.isEmpty
@@ -402,7 +453,7 @@ class _HomeHeader extends StatelessWidget {
                       onPressed: onClearSearch,
                       icon: const Icon(
                         Icons.close_rounded,
-                        color: _HomeColors.primary,
+                        color: _HomeColors.lightText,
                       ),
                     ),
               border: InputBorder.none,
@@ -420,9 +471,9 @@ class _HomeHeader extends StatelessWidget {
           child: Container(
             height: 56,
             decoration: BoxDecoration(
-              color: _HomeColors.surface,
+              color: _HomeColors.darkField,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _HomeColors.border),
+              border: Border.all(color: _HomeColors.darkBorder),
             ),
             child: TabBar(
               isScrollable: true,
@@ -434,11 +485,11 @@ class _HomeHeader extends StatelessWidget {
                 vertical: 7,
               ),
               indicator: BoxDecoration(
-                color: _HomeColors.primarySoft,
+                color: _HomeColors.primary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              labelColor: _HomeColors.primary,
-              unselectedLabelColor: _HomeColors.muted,
+              labelColor: Colors.white,
+              unselectedLabelColor: _HomeColors.lightMuted,
               labelStyle: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
@@ -497,6 +548,8 @@ class _ProductCard extends StatelessWidget {
     return Material(
       color: _HomeColors.surface,
       borderRadius: BorderRadius.circular(18),
+      elevation: 8,
+      shadowColor: const Color(0x66000614),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
@@ -847,7 +900,7 @@ class _LoadMoreFooter extends StatelessWidget {
           child: Text(
             'Tous les articles sont charges',
             style: TextStyle(
-              color: _HomeColors.muted,
+              color: _HomeColors.lightMuted,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),
@@ -1054,7 +1107,7 @@ class _StateView extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _HomeColors.ink,
+                color: _HomeColors.lightText,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -1064,7 +1117,7 @@ class _StateView extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: _HomeColors.muted,
+                color: _HomeColors.lightMuted,
                 fontSize: 13.5,
                 height: 1.35,
               ),
@@ -1221,11 +1274,18 @@ class _ProductItem {
 class _HomeColors {
   const _HomeColors._();
 
+  static const background = Color(0xFF031126);
+  static const darkPanel = Color(0xFF061B3B);
+  static const darkField = Color(0xFF0B1A2E);
+  static const darkBorder = Color(0xFF17335D);
+  static const lightText = Color(0xFFF8FAFC);
+  static const lightMuted = Color(0xFF9FB1CC);
   static const surface = Colors.white;
   static const softSurface = Color(0xFFF1F5F9);
   static const border = Color(0xFFE5EAF1);
   static const primary = Color(0xFF2563EB);
   static const primarySoft = Color(0xFFEAF2FF);
+  static const success = Color(0xFF22C55E);
   static const promo = Color(0xFFE11D48);
   static const newItem = Color(0xFF16A34A);
   static const focus = Color(0xFFFDE047);
