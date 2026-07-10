@@ -1151,7 +1151,6 @@ List<_ProductItem> _filterProducts(List<_ProductItem> items, String query) {
 }
 
 int _responsiveGridColumnCount(double width) {
-  if (width >= 1180) return 6;
   if (width >= 960) return 5;
   if (width >= 720) return 4;
   if (width >= 520) return 3;
