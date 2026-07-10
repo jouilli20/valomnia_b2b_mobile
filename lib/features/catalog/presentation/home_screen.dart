@@ -696,7 +696,8 @@ class _ProductBadge extends StatelessWidget {
         : item.isNew
         ? 'New'
         : item.labelName!;
-    final color = item.labelColor ?? _HomeColors.primary;
+    final color = _productBadgeColor(item);
+    final textColor = _productBadgeTextColor(color);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -708,8 +709,8 @@ class _ProductBadge extends StatelessWidget {
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: textColor,
           fontSize: 10.5,
           fontWeight: FontWeight.w900,
         ),
@@ -1176,9 +1177,29 @@ class _HomeColors {
   static const border = Color(0xFFE5EAF1);
   static const primary = Color(0xFF2563EB);
   static const primarySoft = Color(0xFFEAF2FF);
+  static const promo = Color(0xFFE11D48);
+  static const newItem = Color(0xFF16A34A);
+  static const focus = Color(0xFFFDE047);
+  static const retour = Color(0xFFF97316);
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const faint = Color(0xFF94A3B8);
+}
+
+Color _productBadgeColor(_ProductItem item) {
+  if (item.isPromo) return _HomeColors.promo;
+  if (item.isNew) return _HomeColors.newItem;
+
+  final labelName = item.labelName?.trim().toLowerCase();
+  if (labelName == 'promo') return _HomeColors.promo;
+  if (labelName == 'focus') return _HomeColors.focus;
+  if (labelName == 'retour') return _HomeColors.retour;
+
+  return item.labelColor ?? _HomeColors.primary;
+}
+
+Color _productBadgeTextColor(Color backgroundColor) {
+  return backgroundColor == _HomeColors.focus ? _HomeColors.ink : Colors.white;
 }
 
 List<_ProductItem> _mapProducts(List<dynamic> rawItems) {
