@@ -8,7 +8,10 @@ import '../data/catalog_api.dart';
 import '../providers/catalog_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.categoryId, this.categoryName});
+
+  final String? categoryId;
+  final String? categoryName;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -45,8 +48,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   CatalogItemsQuery _itemsQuery({int offset = 0}) {
     return CatalogItemsQuery(
       offset: offset,
+      category: _categoryRequestParam,
       isNew: _selectedFilter.isNew ? true : null,
     );
+  }
+
+  String? get _categoryRequestParam {
+    final id = widget.categoryId?.trim();
+    if (id == null || id.isEmpty) return null;
+    return '[$id]';
   }
 
   Future<void> _refreshItems() async {
@@ -195,6 +205,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: _HomeHeader(
                   searchController: _searchController,
                   searchQuery: _searchQuery,
+                  selectedCategoryName: widget.categoryName,
                   filters: filters,
                   selectedFilter: _selectedFilter,
                   isRefreshing: isRefreshing,
@@ -219,7 +230,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 hasScrollBody: false,
                 child: _StateView(
                   icon: Icons.inventory_2_outlined,
-                  title: 'Aucun article trouve',
+                  title: widget.categoryName == null
+                      ? 'Aucun article trouve'
+                      : 'Aucun article dans cette categorie',
                   message: 'Tirez vers le bas pour actualiser les articles.',
                 ),
               )
@@ -311,6 +324,7 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.searchController,
     required this.searchQuery,
+    required this.selectedCategoryName,
     required this.filters,
     required this.selectedFilter,
     required this.isRefreshing,
@@ -321,6 +335,7 @@ class _HomeHeader extends StatelessWidget {
 
   final TextEditingController searchController;
   final String searchQuery;
+  final String? selectedCategoryName;
   final List<_ProductFilter> filters;
   final _ProductFilter selectedFilter;
   final bool isRefreshing;
@@ -331,6 +346,8 @@ class _HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = filters.indexOf(selectedFilter);
+    final categoryName = selectedCategoryName?.trim();
+    final hasSelectedCategory = categoryName != null && categoryName.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,26 +384,28 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bienvenue',
+                      hasSelectedCategory ? categoryName : 'Bienvenue',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: _HomeColors.success,
                         fontSize: 21,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
-                      'Decouvrez nos produits et profitez des meilleures offres',
+                      hasSelectedCategory
+                          ? 'Articles de cette categorie'
+                          : 'Decouvrez nos produits et profitez des meilleures offres',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: _HomeColors.lightText,
                         fontSize: 13.5,
                         height: 1.28,

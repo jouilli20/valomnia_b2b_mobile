@@ -17,6 +17,8 @@ class CatalogScreen extends ConsumerStatefulWidget {
 class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   int _selectedTabIndex = _homeTabIndex;
   int _selectedContentIndex = 0;
+  String? _selectedCategoryId;
+  String? _selectedCategoryName;
 
   static const _homeTabIndex = 0;
 
@@ -35,12 +37,28 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   }
 
   void _selectContent(int index) {
-    if (_selectedTabIndex == _homeTabIndex && _selectedContentIndex == index) {
+    final alreadySelected =
+        _selectedTabIndex == _homeTabIndex && _selectedContentIndex == index;
+    final keepsSameArticleFilter = index != 0 || _selectedCategoryId == null;
+    if (alreadySelected && keepsSameArticleFilter) {
       return;
     }
     setState(() {
       _selectedTabIndex = _homeTabIndex;
       _selectedContentIndex = index;
+      if (index == 0) {
+        _selectedCategoryId = null;
+        _selectedCategoryName = null;
+      }
+    });
+  }
+
+  void _showCategoryItems(Category category) {
+    setState(() {
+      _selectedTabIndex = _homeTabIndex;
+      _selectedContentIndex = 0;
+      _selectedCategoryId = category.id;
+      _selectedCategoryName = category.name;
     });
   }
 
@@ -82,6 +100,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         child: switch (_selectedTabIndex) {
           _homeTabIndex => _CatalogContent(
             selectedIndex: _selectedContentIndex,
+            selectedCategoryId: _selectedCategoryId,
+            selectedCategoryName: _selectedCategoryName,
+            onCategorySelected: _showCategoryItems,
           ),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
@@ -107,15 +128,30 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 }
 
 class _CatalogContent extends StatelessWidget {
-  const _CatalogContent({required this.selectedIndex});
+  const _CatalogContent({
+    required this.selectedIndex,
+    required this.selectedCategoryId,
+    required this.selectedCategoryName,
+    required this.onCategorySelected,
+  });
 
   final int selectedIndex;
+  final String? selectedCategoryId;
+  final String? selectedCategoryName;
+  final ValueChanged<Category> onCategorySelected;
 
   @override
   Widget build(BuildContext context) {
     return IndexedStack(
       index: selectedIndex,
-      children: const [HomeScreen(), _CatalogCategoriesView()],
+      children: [
+        HomeScreen(
+          key: ValueKey('home:${selectedCategoryId ?? 'all'}'),
+          categoryId: selectedCategoryId,
+          categoryName: selectedCategoryName,
+        ),
+        _CatalogCategoriesView(onCategorySelected: onCategorySelected),
+      ],
     );
   }
 }
@@ -234,7 +270,9 @@ class _CatalogDrawerItem extends StatelessWidget {
 }
 
 class _CatalogCategoriesView extends ConsumerStatefulWidget {
-  const _CatalogCategoriesView();
+  const _CatalogCategoriesView({required this.onCategorySelected});
+
+  final ValueChanged<Category> onCategorySelected;
 
   @override
   ConsumerState<_CatalogCategoriesView> createState() =>
@@ -326,7 +364,10 @@ class _CatalogCategoriesViewState
                 itemCount: categories.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  return _CategoryTreeTile(category: categories[index]);
+                  return _CategoryTreeTile(
+                    category: categories[index],
+                    onSelected: widget.onCategorySelected,
+                  );
                 },
               ),
             ),
@@ -370,16 +411,33 @@ class _CatalogCategoriesViewState
   }
 }
 
-class _CategoryTreeTile extends StatelessWidget {
-  const _CategoryTreeTile({required this.category, this.depth = 0});
+class _CategoryTreeTile extends StatefulWidget {
+  const _CategoryTreeTile({
+    required this.category,
+    required this.onSelected,
+    this.depth = 0,
+  });
 
   final Category category;
+  final ValueChanged<Category> onSelected;
   final int depth;
 
   @override
+  State<_CategoryTreeTile> createState() => _CategoryTreeTileState();
+}
+
+class _CategoryTreeTileState extends State<_CategoryTreeTile> {
+  bool _expanded = false;
+
+  void _toggleExpanded() {
+    setState(() => _expanded = !_expanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final category = widget.category;
     final hasChildren = category.children.isNotEmpty;
-    final horizontalIndent = depth * 14.0;
+    final horizontalIndent = widget.depth * 14.0;
 
     return Material(
       color: _CatalogColors.surface,
@@ -389,61 +447,56 @@ class _CategoryTreeTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _CatalogColors.border),
         ),
-        child: hasChildren
-            ? Theme(
-                data: Theme.of(context).copyWith(
-                  dividerColor: Colors.transparent,
-                  splashColor: _CatalogColors.primarySoft,
-                  highlightColor: _CatalogColors.primarySoft,
-                ),
-                child: ExpansionTile(
-                  tilePadding: EdgeInsets.fromLTRB(
-                    10 + horizontalIndent,
-                    8,
-                    10,
-                    8,
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                  iconColor: _CatalogColors.primary,
-                  collapsedIconColor: _CatalogColors.muted,
-                  leading: _CategoryAvatar(category: category),
-                  title: _CategoryTitle(category: category),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              onTap: () => widget.onSelected(category),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(10 + horizontalIndent, 10, 10, 10),
+                child: Row(
+                  children: [
+                    _CategoryAvatar(category: category),
+                    const SizedBox(width: 12),
+                    Expanded(child: _CategoryTitle(category: category)),
+                    if (hasChildren) ...[
+                      const SizedBox(width: 8),
                       _CountBadge(count: category.children.length),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.expand_more_rounded),
+                      IconButton(
+                        tooltip: _expanded ? 'Reduire' : 'Developper',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _toggleExpanded,
+                        icon: AnimatedRotation(
+                          turns: _expanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 180),
+                          child: const Icon(Icons.expand_more_rounded),
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
+                ),
+              ),
+            ),
+            if (hasChildren && _expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: Column(
                   children: [
                     for (final child in category.children) ...[
-                      _CategoryTreeTile(category: child, depth: depth + 1),
+                      _CategoryTreeTile(
+                        category: child,
+                        depth: widget.depth + 1,
+                        onSelected: widget.onSelected,
+                      ),
                       if (child != category.children.last)
                         const SizedBox(height: 8),
                     ],
                   ],
                 ),
-              )
-            : InkWell(
-                onTap: () {},
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    10 + horizontalIndent,
-                    10,
-                    10,
-                    10,
-                  ),
-                  child: Row(
-                    children: [
-                      _CategoryAvatar(category: category),
-                      const SizedBox(width: 12),
-                      Expanded(child: _CategoryTitle(category: category)),
-                    ],
-                  ),
-                ),
               ),
+          ],
+        ),
       ),
     );
   }
