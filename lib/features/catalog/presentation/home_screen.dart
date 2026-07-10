@@ -15,15 +15,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
   final List<_ProductItem> _loadedMoreItems = [];
   final Map<String, int> _cartQuantities = {};
   CatalogItemsPage? _lastPage;
-  Timer? _searchDebounce;
-  String _query = '';
-  String _remoteQuery = '';
+  _ProductFilter _lastPageFilter = _ProductFilter.all;
+  _ProductFilter _selectedFilter = _ProductFilter.all;
   int _nextOffset = catalogItemsPageSize;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -37,8 +35,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
-    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -46,7 +42,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   CatalogItemsQuery _itemsQuery({int offset = 0}) {
     return CatalogItemsQuery(
       offset: offset,
-      searchTerm: _remoteQuery.trim().isEmpty ? null : _remoteQuery.trim(),
+      isNew: _selectedFilter.isNew ? true : null,
+      isPromo: _selectedFilter.isPromo ? true : null,
     );
   }
 
@@ -56,42 +53,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(catalogItemsQueryProvider(_itemsQuery()).future);
   }
 
-  void _handleSearchChanged(String value) {
+  void _selectFilter(_ProductFilter filter) {
+    if (_selectedFilter == filter) return;
+    final shouldResetPage = _selectedFilter.apiKey != filter.apiKey;
     setState(() {
-      _query = value;
-      _loadMoreError = null;
-    });
-
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 420), () {
-      if (!mounted) return;
-      setState(() {
-        _remoteQuery = _query.trim();
+      _selectedFilter = filter;
+      if (shouldResetPage) {
         _loadedMoreItems.clear();
         _nextOffset = catalogItemsPageSize;
         _hasMore = true;
         _isLoadingMore = false;
-        _loadMoreError = null;
-      });
-    });
-  }
-
-  void _applyImmediateSearch(String value) {
-    _searchDebounce?.cancel();
-    setState(() {
-      _query = value;
-      _remoteQuery = value.trim();
-      _loadedMoreItems.clear();
-      _nextOffset = catalogItemsPageSize;
-      _hasMore = true;
-      _isLoadingMore = false;
+      }
       _loadMoreError = null;
     });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    _applyImmediateSearch('');
   }
 
   void _resetPagination() {
@@ -107,7 +81,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _handleScroll() {
     if (!_scrollController.hasClients) return;
-    if (_query.trim() != _remoteQuery.trim()) return;
     if (_scrollController.position.extentAfter < 520) {
       unawaited(_loadMoreItems());
     }
@@ -150,14 +123,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return asyncPage.when(
       loading: () {
         final page = _lastPage;
-        return page == null
-            ? const _StateView(
-                icon: Icons.hourglass_top_rounded,
-                title: 'Chargement des articles',
-                message: 'Veuillez patienter.',
-                showProgress: true,
-              )
-            : _buildContent(page, isRefreshing: true);
+        if (page == null) {
+          return const _StateView(
+            icon: Icons.hourglass_top_rounded,
+            title: 'Chargement des articles',
+            message: 'Veuillez patienter.',
+            showProgress: true,
+          );
+        }
+
+        return _buildContent(
+          page,
+          isRefreshing: true,
+          showLoadingState: _lastPageFilter.apiKey != _selectedFilter.apiKey,
+        );
       },
       error: (error, _) => _StateView(
         icon: Icons.wifi_off_rounded,
@@ -169,22 +148,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       data: (page) {
         _lastPage = page;
+        _lastPageFilter = _selectedFilter;
         return _buildContent(page);
       },
     );
   }
 
-  Widget _buildContent(CatalogItemsPage page, {bool isRefreshing = false}) {
+  Widget _buildContent(
+    CatalogItemsPage page, {
+    bool isRefreshing = false,
+    bool showLoadingState = false,
+  }) {
     final initialItems = _mapProducts(page.items);
     final items = _mergeProducts(initialItems, _loadedMoreItems);
-    final visibleItems = _filterProducts(items, _query);
-    final displayTotal = _query.trim().isEmpty
-        ? page.total
-        : visibleItems.length;
-    final canLoadMore =
-        _query.trim() == _remoteQuery.trim() &&
-        _nextOffset < page.total &&
-        visibleItems.isNotEmpty;
+    final filters = _buildProductFilters();
+    final visibleItems = _filterProducts(items, _selectedFilter);
+    final canLoadMore = _nextOffset < page.total && visibleItems.isNotEmpty;
 
     return RefreshIndicator(
       color: _HomeColors.primary,
@@ -197,29 +176,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             sliver: SliverToBoxAdapter(
               child: _HomeHeader(
-                controller: _searchController,
-                query: _query,
-                itemCount: displayTotal,
-                isRefreshing:
-                    isRefreshing || _query.trim() != _remoteQuery.trim(),
-                onChanged: _handleSearchChanged,
-                onClear: _clearSearch,
+                itemCount: page.total,
+                filters: filters,
+                selectedFilter: _selectedFilter,
+                isRefreshing: isRefreshing,
+                onFilterSelected: _selectFilter,
               ),
             ),
           ),
-          if (visibleItems.isEmpty)
+          if (showLoadingState)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: _StateView(
+                icon: Icons.hourglass_top_rounded,
+                title: 'Chargement des articles',
+                message: 'Veuillez patienter.',
+                showProgress: true,
+              ),
+            )
+          else if (visibleItems.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _StateView(
                 icon: Icons.inventory_2_outlined,
-                title: _query.trim().isEmpty
-                    ? 'Aucun article trouve'
-                    : 'Aucun resultat',
-                message: _query.trim().isEmpty
-                    ? 'Tirez vers le bas pour actualiser les articles.'
-                    : 'Essayez un autre mot-cle.',
-                actionLabel: _query.trim().isEmpty ? null : 'Effacer',
-                onAction: _query.trim().isEmpty ? null : _clearSearch,
+                title: 'Aucun article trouve',
+                message: 'Tirez vers le bas pour actualiser les articles.',
               ),
             )
           else ...[
@@ -307,23 +288,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
-    required this.controller,
-    required this.query,
     required this.itemCount,
+    required this.filters,
+    required this.selectedFilter,
     required this.isRefreshing,
-    required this.onChanged,
-    required this.onClear,
+    required this.onFilterSelected,
   });
 
-  final TextEditingController controller;
-  final String query;
   final int itemCount;
+  final List<_ProductFilter> filters;
+  final _ProductFilter selectedFilter;
   final bool isRefreshing;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
+  final ValueChanged<_ProductFilter> onFilterSelected;
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = filters.indexOf(selectedFilter);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -396,34 +377,63 @@ class _HomeHeader extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        TextField(
-          controller: controller,
-          textInputAction: TextInputAction.search,
-          onChanged: onChanged,
-          style: const TextStyle(
-            color: _HomeColors.ink,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+        DefaultTabController(
+          key: ValueKey(
+            '${filters.length}:${selectedIndex < 0 ? 0 : selectedIndex}',
           ),
-          decoration: InputDecoration(
-            hintText: 'Rechercher un article',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: query.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Effacer',
-                    onPressed: onClear,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-            filled: true,
-            fillColor: _HomeColors.surface,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 15,
+          length: filters.length,
+          initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: _HomeColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _HomeColors.border),
             ),
-            border: _inputBorder(_HomeColors.border),
-            enabledBorder: _inputBorder(_HomeColors.border),
-            focusedBorder: _inputBorder(_HomeColors.primary, width: 1.5),
+            child: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorPadding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 7,
+              ),
+              indicator: BoxDecoration(
+                color: _HomeColors.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              labelColor: _HomeColors.primary,
+              unselectedLabelColor: _HomeColors.muted,
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              onTap: (index) => onFilterSelected(filters[index]),
+              tabs: [
+                for (final filter in filters)
+                  Tab(
+                    height: 48,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(filter.icon, size: 18),
+                          const SizedBox(width: 7),
+                          Text(filter.title),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1035,6 +1045,66 @@ class _StateView extends StatelessWidget {
   }
 }
 
+class _ProductFilter {
+  const _ProductFilter._({
+    required this.key,
+    required this.title,
+    required this.icon,
+    this.isNew = false,
+    this.isPromo = false,
+    this.labelName,
+  });
+
+  static const all = _ProductFilter._(
+    key: 'all',
+    title: 'Tous',
+    icon: Icons.apps_rounded,
+  );
+
+  static const newItems = _ProductFilter._(
+    key: 'new',
+    title: 'New',
+    icon: Icons.fiber_new_rounded,
+    isNew: true,
+  );
+
+  static const promo = _ProductFilter._(
+    key: 'promo',
+    title: 'Promo',
+    icon: Icons.local_offer_rounded,
+    isPromo: true,
+  );
+
+  static const labelNameGroup = _ProductFilter._(
+    key: 'labelName',
+    title: 'LabelName',
+    icon: Icons.label_rounded,
+    labelName: 'FOCUS,RETOUR',
+  );
+
+  final String key;
+  final String title;
+  final IconData icon;
+  final bool isNew;
+  final bool isPromo;
+  final String? labelName;
+
+  String get apiKey {
+    if (isNew) return 'new';
+    if (isPromo) return 'promo';
+    return 'all';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is _ProductFilter && other.key == key;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
+}
+
 class _ProductItem {
   const _ProductItem({
     required this.key,
@@ -1087,19 +1157,14 @@ class _ProductItem {
     );
   }
 
-  bool matches(String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return true;
-
-    return [
-      name,
-      reference,
-      description,
-      category,
-      unit,
-      barcode,
-      price,
-    ].whereType<String>().any((value) => value.toLowerCase().contains(q));
+  bool matchesFilter(_ProductFilter filter) {
+    if (filter == _ProductFilter.all) return true;
+    if (filter.isNew) return isNew;
+    if (filter.isPromo) return isPromo;
+    if (filter == _ProductFilter.labelNameGroup) {
+      return _isGroupedLabelName(labelName);
+    }
+    return false;
   }
 }
 
@@ -1114,13 +1179,6 @@ class _HomeColors {
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const faint = Color(0xFF94A3B8);
-}
-
-OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
-  return OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: BorderSide(color: color, width: width),
-  );
 }
 
 List<_ProductItem> _mapProducts(List<dynamic> rawItems) {
@@ -1144,10 +1202,22 @@ List<_ProductItem> _mergeProducts(
   return items;
 }
 
-List<_ProductItem> _filterProducts(List<_ProductItem> items, String query) {
-  final q = query.trim();
-  if (q.isEmpty) return items;
-  return items.where((item) => item.matches(q)).toList(growable: false);
+List<_ProductFilter> _buildProductFilters() {
+  return const [
+    _ProductFilter.all,
+    _ProductFilter.newItems,
+    _ProductFilter.labelNameGroup,
+    _ProductFilter.promo,
+  ];
+}
+
+List<_ProductItem> _filterProducts(
+  List<_ProductItem> items,
+  _ProductFilter filter,
+) {
+  return items
+      .where((item) => item.matchesFilter(filter))
+      .toList(growable: false);
 }
 
 int _responsiveGridColumnCount(double width) {
@@ -1356,6 +1426,11 @@ Color? _labelColor(dynamic item) {
 String? _clean(dynamic value) {
   final text = value?.toString().trim();
   return text == null || text.isEmpty || text == 'null' ? null : text;
+}
+
+bool _isGroupedLabelName(String? labelName) {
+  final value = labelName?.trim().toLowerCase();
+  return value == 'focus' || value == 'retour';
 }
 
 String? _namedValue(dynamic value) {
