@@ -69,6 +69,7 @@ flutter:
   assets:
     - assets/images/valomnia_mark.png
     - assets/images/valomnia_logo.png
+    - assets/images/organization_mark.png
     - assets/images/catalog_header.png
     - assets/images/catalog_icon.png
 

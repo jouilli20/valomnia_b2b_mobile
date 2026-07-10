@@ -175,7 +175,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             sliver: SliverToBoxAdapter(
               child: _HomeHeader(
-                itemCount: page.total,
                 filters: filters,
                 selectedFilter: _selectedFilter,
                 isRefreshing: isRefreshing,
@@ -287,14 +286,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
-    required this.itemCount,
     required this.filters,
     required this.selectedFilter,
     required this.isRefreshing,
     required this.onFilterSelected,
   });
 
-  final int itemCount;
   final List<_ProductFilter> filters;
   final _ProductFilter selectedFilter;
   final bool isRefreshing;
@@ -314,54 +311,13 @@ class _HomeHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: _HomeColors.border),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: _HomeColors.primarySoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Image.asset(
-                  'assets/images/catalog_icon.png',
-                  fit: BoxFit.contain,
-                  semanticLabel: 'Catalogue produits',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Catalogue produits',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _HomeColors.ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      itemCount == 1
-                          ? '1 article disponible'
-                          : '$itemCount articles disponibles',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _HomeColors.muted,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: Center(
+            child: Image.asset(
+              'assets/images/organization_mark.png',
+              height: 56,
+              fit: BoxFit.contain,
+              semanticLabel: 'Organisation',
+            ),
           ),
         ),
         if (isRefreshing) ...[
