@@ -15,6 +15,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
   final List<_ProductItem> _loadedMoreItems = [];
@@ -22,6 +23,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   CatalogItemsPage? _lastPage;
   _ProductFilter _lastPageFilter = _ProductFilter.all;
   _ProductFilter _selectedFilter = _ProductFilter.all;
+  String _searchQuery = '';
   int _nextOffset = catalogItemsPageSize;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -35,6 +37,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -65,6 +68,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       _loadMoreError = null;
     });
+  }
+
+  void _handleSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _searchQuery = '');
   }
 
   void _resetPagination() {
@@ -161,7 +173,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final initialItems = _mapProducts(page.items);
     final items = _mergeProducts(initialItems, _loadedMoreItems);
     final filters = _buildProductFilters();
-    final visibleItems = _filterProducts(items, _selectedFilter);
+    final visibleItems = _filterProducts(
+      items,
+      _selectedFilter,
+      searchQuery: _searchQuery,
+    );
     final canLoadMore = _nextOffset < page.total && visibleItems.isNotEmpty;
 
     return RefreshIndicator(
@@ -175,9 +191,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             sliver: SliverToBoxAdapter(
               child: _HomeHeader(
+                searchController: _searchController,
+                searchQuery: _searchQuery,
                 filters: filters,
                 selectedFilter: _selectedFilter,
                 isRefreshing: isRefreshing,
+                onSearchChanged: _handleSearchChanged,
+                onClearSearch: _clearSearch,
                 onFilterSelected: _selectFilter,
               ),
             ),
@@ -286,15 +306,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
+    required this.searchController,
+    required this.searchQuery,
     required this.filters,
     required this.selectedFilter,
     required this.isRefreshing,
+    required this.onSearchChanged,
+    required this.onClearSearch,
     required this.onFilterSelected,
   });
 
+  final TextEditingController searchController;
+  final String searchQuery;
   final List<_ProductFilter> filters;
   final _ProductFilter selectedFilter;
   final bool isRefreshing;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onClearSearch;
   final ValueChanged<_ProductFilter> onFilterSelected;
 
   @override
@@ -331,6 +359,57 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        Container(
+          height: 54,
+          decoration: BoxDecoration(
+            color: _HomeColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _HomeColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F2563EB),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: searchController,
+            textInputAction: TextInputAction.search,
+            onChanged: onSearchChanged,
+            style: const TextStyle(
+              color: _HomeColors.ink,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Rechercher un produit',
+              hintStyle: const TextStyle(
+                color: _HomeColors.muted,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: _HomeColors.ink,
+                size: 25,
+              ),
+              suffixIcon: searchQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Effacer',
+                      onPressed: onClearSearch,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: _HomeColors.primary,
+                      ),
+                    ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
         DefaultTabController(
           key: ValueKey(
@@ -1121,6 +1200,22 @@ class _ProductItem {
     }
     return false;
   }
+
+  bool matchesSearch(String query) {
+    final value = query.trim().toLowerCase();
+    if (value.isEmpty) return true;
+
+    return [
+      name,
+      reference,
+      description,
+      category,
+      unit,
+      barcode,
+      price,
+      labelName,
+    ].whereType<String>().any((text) => text.toLowerCase().contains(value));
+  }
 }
 
 class _HomeColors {
@@ -1188,10 +1283,12 @@ List<_ProductFilter> _buildProductFilters() {
 
 List<_ProductItem> _filterProducts(
   List<_ProductItem> items,
-  _ProductFilter filter,
-) {
+  _ProductFilter filter, {
+  required String searchQuery,
+}) {
   return items
       .where((item) => item.matchesFilter(filter))
+      .where((item) => item.matchesSearch(searchQuery))
       .toList(growable: false);
 }
 
