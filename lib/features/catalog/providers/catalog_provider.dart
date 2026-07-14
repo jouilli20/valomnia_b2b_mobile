@@ -86,6 +86,28 @@ final catalogProvider = FutureProvider<List<dynamic>>((ref) async {
   return page.items;
 });
 
+final customerMinOrderTotalProvider = FutureProvider.autoDispose<double>((
+  ref,
+) async {
+  final catalogApi = ref.read(catalogApiProvider);
+  final customerId = (await SecureStorageService.getCustomerId())?.trim();
+
+  if (customerId == null || customerId.isEmpty) {
+    log(
+      'Customer ID not found, cannot load minimum order total',
+      name: 'CatalogProvider',
+    );
+    throw StateError('Customer ID introuvable.');
+  }
+
+  log(
+    'Loading minimum order total for customer ID = $customerId',
+    name: 'CatalogProvider',
+  );
+
+  return catalogApi.getCustomerMinOrderTotal(customerId: customerId);
+});
+
 final catalogItemsPageProvider = FutureProvider.family<List<dynamic>, int>((
   ref,
   offset,

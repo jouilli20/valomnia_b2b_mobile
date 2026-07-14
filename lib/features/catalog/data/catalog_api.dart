@@ -11,10 +11,7 @@ class CatalogApi {
   Future<List<dynamic>> getCategories() async {
     final response = await _dio.get(
       ApiConstants.itemCategories,
-      queryParameters: {
-        'baseUrl': ApiConstants.tenantBaseUrl,
-        'active': true,
-      },
+      queryParameters: {'baseUrl': ApiConstants.tenantBaseUrl, 'active': true},
     );
 
     log('CATEGORIES STATUS: ${response.statusCode}', name: 'CatalogApi');
@@ -144,6 +141,82 @@ class CatalogApi {
 
     return CatalogItemsPage.empty(offset: offset, max: max);
   }
+
+  Future<double> getCustomerMinOrderTotal({required String customerId}) async {
+    final normalizedCustomerId = customerId.trim();
+    if (normalizedCustomerId.isEmpty) {
+      throw ArgumentError.value(customerId, 'customerId', 'Customer ID vide.');
+    }
+
+    final response = await _dio.get(
+      ApiConstants.customerMinOrderTotal,
+      queryParameters: {
+        'baseUrl': ApiConstants.tenantBaseUrl,
+        'customerId': normalizedCustomerId,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+
+    log('MIN ORDER STATUS: ${response.statusCode}', name: 'CatalogApi');
+
+    log('MIN ORDER RESPONSE: ${response.data}', name: 'CatalogApi');
+
+    return _minimumOrderTotalInDt(_parseMinimumOrderTotal(response.data));
+  }
+}
+
+double _parseMinimumOrderTotal(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+
+  if (value is List && value.isNotEmpty) {
+    return _parseMinimumOrderTotal(value.first);
+  }
+
+  if (value is Map) {
+    for (final key in [
+      'customerMinOrderTotal',
+      'minimumOrderTotal',
+      'minOrderTotal',
+      'total',
+      'amount',
+      'value',
+      'data',
+    ]) {
+      if (value.containsKey(key)) {
+        return _parseMinimumOrderTotal(value[key]);
+      }
+    }
+  }
+
+  final text = value
+      ?.toString()
+      .replaceAll('"', '')
+      .replaceAll('DT', '')
+      .replaceAll('TND', '')
+      .replaceAll(',', '.')
+      .trim();
+
+  if (text == null || text.isEmpty) {
+    return 0;
+  }
+
+  final directValue = double.tryParse(text);
+  if (directValue != null) return directValue;
+
+  final match = RegExp(r'-?\d+(?:[\.,]\d+)?').firstMatch(text);
+  if (match == null) return 0;
+
+  return double.tryParse(match.group(0)!.replaceAll(',', '.')) ?? 0;
+}
+
+double _minimumOrderTotalInDt(double value) {
+  if (value > 0 && value < 10) {
+    return value * 1000;
+  }
+
+  return value;
 }
 
 class CatalogItemsPage {

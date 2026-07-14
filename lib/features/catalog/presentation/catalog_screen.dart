@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../cart/presentation/cart_screen.dart';
 import '../domain/category.dart';
 import '../providers/catalog_provider.dart';
 import 'home_screen.dart';
@@ -104,6 +105,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             selectedCategoryName: _selectedCategoryName,
             onCategorySelected: _showCategoryItems,
           ),
+          1 => const CartScreen(),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
       ),

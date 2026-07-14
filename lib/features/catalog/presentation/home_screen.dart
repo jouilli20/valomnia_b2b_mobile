@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../cart/domain/cart_item.dart';
+import '../../cart/providers/cart_provider.dart';
 import '../data/catalog_api.dart';
 import '../providers/catalog_provider.dart';
 
@@ -22,7 +24,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
 
   final List<_ProductItem> _loadedMoreItems = [];
-  final Map<String, int> _cartQuantities = {};
   CatalogItemsPage? _lastPage;
   _ProductFilter _lastPageFilter = _ProductFilter.all;
   _ProductFilter _selectedFilter = _ProductFilter.all;
@@ -140,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncPage = ref.watch(catalogItemsQueryProvider(_itemsQuery()));
+    final cart = ref.watch(cartControllerProvider).value;
 
     return asyncPage.when(
       loading: () {
@@ -155,6 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         return _buildContent(
           page,
+          cart: cart,
           isRefreshing: true,
           showLoadingState: _lastPageFilter.apiKey != _selectedFilter.apiKey,
         );
@@ -170,13 +173,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data: (page) {
         _lastPage = page;
         _lastPageFilter = _selectedFilter;
-        return _buildContent(page);
+        return _buildContent(page, cart: cart);
       },
     );
   }
 
   Widget _buildContent(
     CatalogItemsPage page, {
+    CustomerCart? cart,
     bool isRefreshing = false,
     bool showLoadingState = false,
   }) {
@@ -258,7 +262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         return _ProductCard(
                           item: item,
                           onTap: () => _showProductDetails(item),
-                          quantity: _cartQuantities[item.key] ?? 0,
+                          quantity: cart?.quantityFor(item.key) ?? 0,
                           onAddToCart: () => _incrementCartQuantity(item),
                           onIncrement: () => _incrementCartQuantity(item),
                           onDecrement: () => _decrementCartQuantity(item),
@@ -287,24 +291,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _incrementCartQuantity(_ProductItem item) {
-    setState(() {
-      _cartQuantities.update(
-        item.key,
-        (quantity) => quantity + 1,
-        ifAbsent: () => 1,
-      );
-    });
+    unawaited(
+      _runCartAction(
+        (controller) => controller.addItem(_cartItemFromProduct(item)),
+      ),
+    );
   }
 
   void _decrementCartQuantity(_ProductItem item) {
-    setState(() {
-      final currentQuantity = _cartQuantities[item.key] ?? 0;
-      if (currentQuantity <= 1) {
-        _cartQuantities.remove(item.key);
-      } else {
-        _cartQuantities[item.key] = currentQuantity - 1;
-      }
-    });
+    unawaited(
+      _runCartAction((controller) => controller.decrementItem(item.key)),
+    );
+  }
+
+  Future<void> _runCartAction(
+    Future<void> Function(CartController controller) action,
+  ) async {
+    try {
+      await action(ref.read(cartControllerProvider.notifier));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible de mettre a jour le panier: $error'),
+        ),
+      );
+    }
   }
 
   void _showProductDetails(_ProductItem item) {
@@ -1369,6 +1381,33 @@ List<_ProductItem> _filterProducts(
       .where((item) => item.matchesFilter(filter))
       .where((item) => item.matchesSearch(searchQuery))
       .toList(growable: false);
+}
+
+CartItem _cartItemFromProduct(_ProductItem item) {
+  return CartItem(
+    productKey: item.key,
+    name: item.name,
+    reference: item.reference,
+    imageUrl: item.imageUrl,
+    quantity: 1,
+    unitPrice: _parsePriceValue(item.price),
+    priceLabel: item.price,
+  );
+}
+
+double? _parsePriceValue(String? value) {
+  final text = value
+      ?.replaceAll(RegExp(r'\s+'), '')
+      .replaceAll('DT', '')
+      .replaceAll('TND', '')
+      .trim();
+
+  if (text == null || text.isEmpty) return null;
+
+  final match = RegExp(r'-?\d+(?:[\.,]\d+)?').firstMatch(text);
+  if (match == null) return null;
+
+  return double.tryParse(match.group(0)!.replaceAll(',', '.'));
 }
 
 int _responsiveGridColumnCount(double width) {
