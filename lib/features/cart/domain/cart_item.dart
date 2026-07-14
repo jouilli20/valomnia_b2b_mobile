@@ -7,6 +7,8 @@ class CartItem {
     this.imageUrl,
     this.unitPrice,
     this.priceLabel,
+    this.orderItemId,
+    this.orderItemUnitId,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,8 @@ class CartItem {
       quantity: _positiveInt(json['quantity']),
       unitPrice: _optionalDouble(json['unitPrice']),
       priceLabel: _clean(json['priceLabel']),
+      orderItemId: _clean(json['orderItemId']),
+      orderItemUnitId: _clean(json['orderItemUnitId']),
     );
   }
 
@@ -28,6 +32,8 @@ class CartItem {
   final int quantity;
   final double? unitPrice;
   final String? priceLabel;
+  final String? orderItemId;
+  final String? orderItemUnitId;
 
   double get lineTotal => (unitPrice ?? 0) * quantity;
 
@@ -39,6 +45,8 @@ class CartItem {
     int? quantity,
     double? unitPrice,
     String? priceLabel,
+    String? orderItemId,
+    String? orderItemUnitId,
   }) {
     return CartItem(
       productKey: productKey ?? this.productKey,
@@ -48,6 +56,8 @@ class CartItem {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       priceLabel: priceLabel ?? this.priceLabel,
+      orderItemId: orderItemId ?? this.orderItemId,
+      orderItemUnitId: orderItemUnitId ?? this.orderItemUnitId,
     );
   }
 
@@ -60,6 +70,8 @@ class CartItem {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'priceLabel': priceLabel,
+      'orderItemId': orderItemId,
+      'orderItemUnitId': orderItemUnitId,
     };
   }
 }

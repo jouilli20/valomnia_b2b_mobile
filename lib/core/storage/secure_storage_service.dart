@@ -68,8 +68,41 @@ class SecureStorageService {
     return await _storage.read(key: organisationKey);
   }
 
+  static Future<String?> getToken() async {
+    final storedToken = _cleanId(await _storage.read(key: 'token'));
+    if (storedToken != null) return storedToken;
+
+    final session = await getSession();
+    if (session == null) return null;
+
+    return _extractToken(session);
+  }
+
   static Future<void> logout() async {
     await _storage.deleteAll();
+  }
+
+  static String? _extractToken(Map<String, dynamic> session) {
+    for (final key in [
+      'token',
+      'accessToken',
+      'access_token',
+      'authToken',
+      'jwt',
+    ]) {
+      final token = _cleanId(session[key]);
+      if (token != null) return token;
+    }
+
+    for (final key in ['data', 'user']) {
+      final value = session[key];
+      if (value is Map) {
+        final token = _extractToken(Map<String, dynamic>.from(value));
+        if (token != null) return token;
+      }
+    }
+
+    return null;
   }
 
   static String? _extractCustomerId(Map<String, dynamic> session) {

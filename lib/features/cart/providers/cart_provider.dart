@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_storage_service.dart';
+import '../data/cart_order_api.dart';
 import '../data/cart_repository.dart';
 import '../domain/cart_item.dart';
 
 final cartRepositoryProvider = Provider<CartRepository>((ref) {
   return const CartRepository();
+});
+
+final cartOrderApiProvider = Provider<CartOrderApi>((ref) {
+  return CartOrderApi();
 });
 
 final cartControllerProvider =

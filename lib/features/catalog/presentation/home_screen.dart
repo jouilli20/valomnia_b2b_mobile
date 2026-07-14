@@ -1239,6 +1239,8 @@ class _ProductItem {
     required this.isPromo,
     required this.labelName,
     required this.labelColor,
+    required this.orderItemId,
+    required this.orderItemUnitId,
   });
 
   final String key;
@@ -1255,6 +1257,8 @@ class _ProductItem {
   final bool isPromo;
   final String? labelName;
   final Color? labelColor;
+  final String? orderItemId;
+  final String? orderItemUnitId;
 
   factory _ProductItem.from(dynamic item) {
     return _ProductItem(
@@ -1272,6 +1276,8 @@ class _ProductItem {
       isPromo: _boolValue(item, 'isPromo'),
       labelName: _stringValue(item, 'labelName'),
       labelColor: _labelColor(item),
+      orderItemId: _itemId(item),
+      orderItemUnitId: _itemUnitId(item),
     );
   }
 
@@ -1298,6 +1304,8 @@ class _ProductItem {
       barcode,
       price,
       labelName,
+      orderItemId,
+      orderItemUnitId,
     ].whereType<String>().any((text) => text.toLowerCase().contains(value));
   }
 }
@@ -1392,6 +1400,8 @@ CartItem _cartItemFromProduct(_ProductItem item) {
     quantity: 1,
     unitPrice: _parsePriceValue(item.price),
     priceLabel: item.price,
+    orderItemId: item.orderItemId,
+    orderItemUnitId: item.orderItemUnitId,
   );
 }
 
@@ -1452,6 +1462,91 @@ String? _itemReference(dynamic item) {
   for (final key in ['reference', 'ref', 'code', 'sku']) {
     final value = _clean(item[key]);
     if (value != null) return value;
+  }
+
+  return null;
+}
+
+String? _itemId(dynamic item) {
+  if (item is! Map) return null;
+
+  for (final key in ['id', 'itemId', 'productId']) {
+    final value = _clean(item[key]);
+    if (value != null) return value;
+  }
+
+  final nestedItem = item['item'];
+  if (nestedItem is Map) return _idFromMap(nestedItem);
+
+  return null;
+}
+
+String? _itemUnitId(dynamic item) {
+  if (item is! Map) return null;
+
+  for (final key in ['itemUnitId', 'unitId', 'salesUnitId']) {
+    final value = _clean(item[key]);
+    if (value != null) return value;
+  }
+
+  for (final key in ['itemUnit', 'unit', 'salesUnit', 'defaultUnit']) {
+    final value = _idFromMap(item[key]);
+    if (value != null) return value;
+  }
+
+  for (final key in ['itemUnits', 'units', 'salesUnits']) {
+    final value = _firstIdFromList(item[key]);
+    if (value != null) return value;
+  }
+
+  final priceUnitId = _itemUnitIdFromPrice(item['prices']);
+  if (priceUnitId != null) return priceUnitId;
+
+  return null;
+}
+
+String? _itemUnitIdFromPrice(dynamic value) {
+  if (value is List) {
+    for (final entry in value) {
+      final unitId = _itemUnitIdFromPrice(entry);
+      if (unitId != null) return unitId;
+    }
+
+    return null;
+  }
+
+  if (value is! Map) return null;
+
+  for (final key in ['itemUnitId', 'unitId', 'salesUnitId']) {
+    final unitId = _clean(value[key]);
+    if (unitId != null) return unitId;
+  }
+
+  for (final key in ['itemUnit', 'unit', 'salesUnit']) {
+    final unitId = _idFromMap(value[key]);
+    if (unitId != null) return unitId;
+  }
+
+  return null;
+}
+
+String? _firstIdFromList(dynamic value) {
+  if (value is! List) return null;
+
+  for (final entry in value) {
+    final id = _idFromMap(entry);
+    if (id != null) return id;
+  }
+
+  return null;
+}
+
+String? _idFromMap(dynamic value) {
+  if (value is! Map) return null;
+
+  for (final key in ['id', 'itemUnitId', 'unitId', 'salesUnitId']) {
+    final id = _clean(value[key]);
+    if (id != null) return id;
   }
 
   return null;

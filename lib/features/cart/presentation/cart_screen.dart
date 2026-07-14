@@ -82,15 +82,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 }
 
-class _CartSummary extends ConsumerWidget {
+class _CartSummary extends ConsumerStatefulWidget {
   const _CartSummary({required this.cart, required this.minimumOrderTotal});
 
   final CustomerCart cart;
   final double minimumOrderTotal;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final missingAmount = (minimumOrderTotal - cart.total).clamp(
+  ConsumerState<_CartSummary> createState() => _CartSummaryState();
+}
+
+class _CartSummaryState extends ConsumerState<_CartSummary> {
+  final _commentController = TextEditingController();
+  DateTime? _deliveryDate;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = widget.cart;
+    final missingAmount = (widget.minimumOrderTotal - cart.total).clamp(
       0.0,
       double.infinity,
     );
@@ -104,7 +120,7 @@ class _CartSummary extends ConsumerWidget {
           sliver: SliverToBoxAdapter(
             child: _SummaryPanel(
               cart: cart,
-              minimumOrderTotal: minimumOrderTotal,
+              minimumOrderTotal: widget.minimumOrderTotal,
               missingAmount: missingAmount,
             ),
           ),
@@ -129,6 +145,18 @@ class _CartSummary extends ConsumerWidget {
                       message: 'Le minimum de commande est atteint.',
                       success: true,
                     ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: _CheckoutPanel(
+                cart: cart,
+                deliveryDate: _deliveryDate,
+                commentController: _commentController,
+                enabled: !_isSubmitting,
+                onPickDeliveryDate: _pickDeliveryDate,
+              ),
             ),
           ),
           SliverPadding(
@@ -166,9 +194,23 @@ class _CartSummary extends ConsumerWidget {
               child: SizedBox(
                 height: 52,
                 child: FilledButton.icon(
-                  onPressed: canSubmit ? () {} : null,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('VALIDER LA COMMANDE'),
+                  onPressed: canSubmit && !_isSubmitting
+                      ? () => _confirmSubmitOrder(cart)
+                      : null,
+                  icon: _isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.3,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_rounded),
+                  label: Text(
+                    _isSubmitting
+                        ? 'VALIDATION EN COURS'
+                        : 'VALIDER LA COMMANDE',
+                  ),
                 ),
               ),
             ),
@@ -176,6 +218,94 @@ class _CartSummary extends ConsumerWidget {
         ],
       ],
     );
+  }
+
+  Future<void> _pickDeliveryDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deliveryDate ?? today,
+      firstDate: today,
+      lastDate: DateTime(today.year + 2, today.month, today.day),
+    );
+
+    if (picked == null || !mounted) return;
+    setState(() => _deliveryDate = picked);
+  }
+
+  Future<void> _confirmSubmitOrder(CustomerCart cart) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirmation'),
+          content: const Text(
+            "Souhaitez-vous confirmer l'envoi de votre commande ?",
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _CartColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Non'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _CartColors.successDark,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Oui'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      await _submitOrder(cart);
+    }
+  }
+
+  Future<void> _submitOrder(CustomerCart cart) async {
+    final deliveryDate = _deliveryDate;
+    if (deliveryDate == null) {
+      _showMessage('Veuillez selectionner une date de livraison.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final reference = await ref
+          .read(cartOrderApiProvider)
+          .addOrder(
+            cart: cart,
+            deliveryDate: deliveryDate,
+            deliveryComment: _commentController.text,
+          );
+
+      await ref.read(cartControllerProvider.notifier).clear();
+
+      if (!mounted) return;
+      _commentController.clear();
+      setState(() => _deliveryDate = null);
+      _showMessage('Commande $reference creee avec succes.');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Impossible de valider la commande: $error');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _runCartAction(
@@ -244,6 +374,110 @@ class _SummaryPanel extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckoutPanel extends StatelessWidget {
+  const _CheckoutPanel({
+    required this.cart,
+    required this.deliveryDate,
+    required this.commentController,
+    required this.enabled,
+    required this.onPickDeliveryDate,
+  });
+
+  final CustomerCart cart;
+  final DateTime? deliveryDate;
+  final TextEditingController commentController;
+  final bool enabled;
+  final VoidCallback onPickDeliveryDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _CartColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _CartColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Resume de la commande',
+            style: TextStyle(
+              color: _CartColors.ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Informations de livraison',
+            style: TextStyle(
+              color: _CartColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Date de livraison',
+            style: TextStyle(
+              color: _CartColors.ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 7),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: enabled ? onPickDeliveryDate : null,
+            child: InputDecorator(
+              decoration: _fieldDecoration(
+                hintText: 'jj/mm/aaaa',
+                suffixIcon: const Icon(Icons.calendar_month_outlined),
+              ),
+              child: Text(
+                deliveryDate == null
+                    ? 'jj/mm/aaaa'
+                    : _formatDate(deliveryDate!),
+                style: TextStyle(
+                  color: deliveryDate == null
+                      ? _CartColors.muted
+                      : _CartColors.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Commentaire',
+            style: TextStyle(
+              color: _CartColors.ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 7),
+          TextField(
+            controller: commentController,
+            enabled: enabled,
+            minLines: 3,
+            maxLines: 5,
+            textInputAction: TextInputAction.newline,
+            decoration: _fieldDecoration(hintText: 'Commentaire ...'),
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: _CartColors.surfaceBorder),
+          const SizedBox(height: 14),
+          _SummaryRow(label: 'Total', value: _formatDt(cart.total), dark: true),
         ],
       ),
     );
@@ -531,22 +765,60 @@ String _formatDt(double value) {
   return '${value.toStringAsFixed(3)} DT';
 }
 
+String _formatDate(DateTime value) {
+  return '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/'
+      '${value.year.toString().padLeft(4, '0')}';
+}
+
+InputDecoration _fieldDecoration({
+  required String hintText,
+  Widget? suffixIcon,
+}) {
+  return InputDecoration(
+    hintText: hintText,
+    suffixIcon: suffixIcon,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: _inputBorder(_CartColors.surfaceBorder),
+    enabledBorder: _inputBorder(_CartColors.surfaceBorder),
+    focusedBorder: _inputBorder(_CartColors.primary, width: 1.4),
+    disabledBorder: _inputBorder(_CartColors.surfaceBorder),
+  );
+}
+
+OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
+  return OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide(color: color, width: width),
+  );
+}
+
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.dark = false,
+  });
 
   final String label;
   final String value;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
+    final labelColor = dark ? _CartColors.ink : _CartColors.lightMuted;
+    final valueColor = dark ? _CartColors.ink : _CartColors.lightText;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: _CartColors.lightMuted,
+            style: TextStyle(
+              color: labelColor,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -555,8 +827,8 @@ class _SummaryRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           value,
-          style: const TextStyle(
-            color: _CartColors.lightText,
+          style: TextStyle(
+            color: valueColor,
             fontSize: 15,
             fontWeight: FontWeight.w900,
           ),
@@ -694,6 +966,7 @@ class _CartColors {
   static const primary = Color(0xFF2563EB);
   static const primarySoft = Color(0xFFEAF2FF);
   static const success = Color(0xFF22C55E);
+  static const successDark = Color(0xFF198754);
   static const warning = Color(0xFFF97316);
   static const danger = Color(0xFFE11D48);
   static const dangerSoft = Color(0xFFFFE4EA);
