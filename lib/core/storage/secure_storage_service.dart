@@ -9,6 +9,7 @@ class SecureStorageService {
 
   static const String sessionKey = 'session';
   static const String customerIdKey = 'customerId';
+  static const String customerOrderIdKey = 'customerOrderId';
   static const String usernameKey = 'username';
   static const String organisationKey = 'organisation';
 
@@ -16,11 +17,10 @@ class SecureStorageService {
     await _storage.write(key: sessionKey, value: jsonEncode(session));
 
     final customerId = _extractCustomerId(session);
-    if (customerId != null) {
-      await _storage.write(key: customerIdKey, value: customerId);
-    } else {
-      await _storage.delete(key: customerIdKey);
-    }
+    await _writeOrDelete(customerIdKey, customerId);
+
+    final customerOrderId = _extractCustomerOrderId(session) ?? customerId;
+    await _writeOrDelete(customerOrderIdKey, customerOrderId);
 
     await _storage.write(key: 'token', value: session['token']?.toString());
   }
@@ -50,6 +50,24 @@ class SecureStorageService {
     }
 
     return customerId;
+  }
+
+  static Future<String?> getCustomerOrderId() async {
+    final storedCustomerOrderId = _cleanId(
+      await _storage.read(key: customerOrderIdKey),
+    );
+    if (storedCustomerOrderId != null) return storedCustomerOrderId;
+
+    final session = await getSession();
+    if (session == null) return null;
+
+    final customerOrderId =
+        _extractCustomerOrderId(session) ?? _extractCustomerId(session);
+    if (customerOrderId != null) {
+      await _storage.write(key: customerOrderIdKey, value: customerOrderId);
+    }
+
+    return customerOrderId;
   }
 
   static Future<void> saveUsername(String username) async {
@@ -82,6 +100,14 @@ class SecureStorageService {
     await _storage.deleteAll();
   }
 
+  static Future<void> _writeOrDelete(String key, String? value) async {
+    if (value != null) {
+      await _storage.write(key: key, value: value);
+    } else {
+      await _storage.delete(key: key);
+    }
+  }
+
   static String? _extractToken(Map<String, dynamic> session) {
     for (final key in [
       'token',
@@ -110,9 +136,6 @@ class SecureStorageService {
       'customerId',
       'customerID',
       'customer_id',
-      'customerReferenceId',
-      'customerReferenceID',
-      'customer_reference_id',
       'clientId',
       'clientID',
       'client_id',
@@ -128,8 +151,7 @@ class SecureStorageService {
         final id =
             _cleanId(map['customerId']) ??
             _cleanId(map['id']) ??
-            _cleanId(map['reference']) ??
-            _cleanId(map['ref']);
+            _cleanId(map['clientId']);
         if (id != null) return id;
       }
     }
@@ -138,6 +160,52 @@ class SecureStorageService {
       final value = session[key];
       if (value is Map) {
         final id = _extractCustomerId(Map<String, dynamic>.from(value));
+        if (id != null) return id;
+      }
+    }
+
+    return _extractCustomerOrderId(session);
+  }
+
+  static String? _extractCustomerOrderId(Map<String, dynamic> session) {
+    for (final key in [
+      'customerReferenceId',
+      'customerReferenceID',
+      'customer_reference_id',
+      'customerExternalId',
+      'customerExternalID',
+      'customer_external_id',
+      'customerCode',
+      'customer_code',
+      'customerRef',
+      'customer_ref',
+    ]) {
+      final directValue = _cleanId(session[key]);
+      if (directValue != null) return directValue;
+    }
+
+    for (final key in ['customer', 'client', 'customerReference']) {
+      final value = session[key];
+      if (value is Map) {
+        final map = Map<String, dynamic>.from(value);
+        final id =
+            _cleanId(map['reference']) ??
+            _cleanId(map['ref']) ??
+            _cleanId(map['code']) ??
+            _cleanId(map['externalId']) ??
+            _cleanId(map['external_id']) ??
+            _cleanId(map['customerReferenceId']) ??
+            _cleanId(map['customer_reference_id']) ??
+            _cleanId(map['customerId']) ??
+            _cleanId(map['id']);
+        if (id != null) return id;
+      }
+    }
+
+    for (final key in ['data', 'user']) {
+      final value = session[key];
+      if (value is Map) {
+        final id = _extractCustomerOrderId(Map<String, dynamic>.from(value));
         if (id != null) return id;
       }
     }

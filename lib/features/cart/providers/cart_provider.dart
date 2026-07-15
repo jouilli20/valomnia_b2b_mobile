@@ -49,7 +49,8 @@ class CartController extends AsyncNotifier<CustomerCart> {
   }
 
   Future<String> _currentCustomerId() async {
-    final customerId = (await SecureStorageService.getCustomerId())?.trim();
+    final customerId = (await SecureStorageService.getCustomerOrderId())
+        ?.trim();
     if (customerId == null || customerId.isEmpty) {
       throw StateError('Customer ID introuvable.');
     }
