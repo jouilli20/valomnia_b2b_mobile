@@ -153,6 +153,61 @@ void main() {
     expect(orderLines[1]['quantity'], 3);
   });
 
+  test('CheckoutEmailPayload matches checkoutEmail form fields', () {
+    const cart = CustomerCart(
+      customerId: 'CT-01',
+      items: [
+        CartItem(
+          productKey: 'id:47',
+          name: '55GR Chocolat vanille',
+          reference: 'ref-001',
+          imageUrl: 'https://agro.valomnia.com/image.png',
+          quantity: 20,
+          unitPrice: 34,
+          orderItemId: '47',
+          orderItemUnitId: '46',
+        ),
+      ],
+    );
+
+    final payload = CheckoutEmailPayload(
+      cart: cart,
+      reference: 'ORDER1507264828',
+      emailUser: 'demo2_b2b@yopmail.com',
+      organization: 'agro',
+      logo: 'https://agro.valomnia.com/logo.png',
+    ).toFormData();
+
+    expect(payload['orderUrl'], 'https://shop.valomnia.com/orders');
+    expect(payload['emailUser'], 'demo2_b2b@yopmail.com');
+    expect(payload['totalTTC'], '680.000 DT');
+    expect(payload['totalPrice'], '680');
+    expect(payload['total'], '680.000 DT');
+    expect(payload['reference'], 'ORDER1507264828');
+    expect(payload['organization'], 'agro');
+    expect(payload['logo'], 'https://agro.valomnia.com/logo.png');
+    expect(payload['baseUrl'], 'https://agro.valomnia.com');
+    expect(payload['lang'], 'fr');
+    expect(payload['hasShippingFeed'], 'false');
+    expect(payload['shippingThreshold'], 'NaN');
+
+    final orderLines = jsonDecode(payload['orderline'] as String) as List;
+    expect(orderLines, hasLength(1));
+    expect(orderLines.first, {
+      'id': 47,
+      'itemUnitId': 46,
+      'finalPrice': '680.000 DT',
+      'unitPrice': '34',
+      'tax': '',
+      'productName': '55GR Chocolat vanille',
+      'productReference': 'ref-001',
+      'imageUrl': 'https://agro.valomnia.com/image.png',
+      'quantity': 20,
+      'salesQty': '20',
+      'formattedUnitPrice': '34.000 DT',
+    });
+  });
+
   test('CartOrderPayload refuses items without unit id', () {
     const cart = CustomerCart(
       customerId: 'CT-01',

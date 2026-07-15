@@ -105,7 +105,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             selectedCategoryName: _selectedCategoryName,
             onCategorySelected: _showCategoryItems,
           ),
-          1 => const CartScreen(),
+          1 => CartScreen(onContinueShopping: () => _selectContent(0)),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
       ),

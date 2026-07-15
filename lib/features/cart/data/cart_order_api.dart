@@ -58,6 +58,44 @@ class CartOrderApi {
     return payload.reference;
   }
 
+  Future<void> checkoutEmail({
+    required CustomerCart cart,
+    required String reference,
+  }) async {
+    final payload = CheckoutEmailPayload(
+      cart: cart,
+      reference: reference,
+      emailUser: await SecureStorageService.getUsername() ?? '',
+      organization: await SecureStorageService.getOrganisation() ?? '',
+      logo: ApiConstants.organizationLogoUrl,
+    );
+
+    try {
+      final response = await _dio.post(
+        ApiConstants.checkoutEmail,
+        queryParameters: {'baseUrl': ApiConstants.tenantBaseUrl},
+        data: FormData.fromMap(payload.toFormData()),
+        options: await _options(),
+      );
+
+      log(
+        'CHECKOUT EMAIL STATUS: ${response.statusCode}',
+        name: 'CartOrderApi',
+      );
+      log('CHECKOUT EMAIL RESPONSE: ${response.data}', name: 'CartOrderApi');
+    } on DioException catch (error) {
+      log(
+        'CHECKOUT EMAIL ERROR STATUS: ${error.response?.statusCode}',
+        name: 'CartOrderApi',
+      );
+      log(
+        'CHECKOUT EMAIL ERROR DATA: ${error.response?.data}',
+        name: 'CartOrderApi',
+      );
+      throw CheckoutEmailException.fromDio(error);
+    }
+  }
+
   Future<Options> _options() async {
     final token = await SecureStorageService.getToken();
     final authorization = token == null
@@ -84,6 +122,32 @@ class CartOrderApi {
     return 'ORDER${_compactDate(date)}'
         '${referenceSequence.toString().padLeft(4, '0')}';
   }
+}
+
+class CheckoutEmailException implements Exception {
+  const CheckoutEmailException(this.message);
+
+  factory CheckoutEmailException.fromDio(DioException error) {
+    final statusCode = error.response?.statusCode;
+    final data = error.response?.data?.toString().trim();
+
+    if (statusCode == null) {
+      return const CheckoutEmailException(
+        "Commande creee, mais l'e-mail de confirmation n'a pas pu etre envoye.",
+      );
+    }
+
+    return CheckoutEmailException(
+      data == null || data.isEmpty
+          ? "Commande creee, mais l'e-mail de confirmation a ete rejete par le serveur ($statusCode)."
+          : "Commande creee, mais l'e-mail de confirmation a ete rejete par le serveur ($statusCode): $data",
+    );
+  }
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 class CartOrderException implements Exception {
@@ -188,8 +252,89 @@ class CartOrderPayload {
   }
 }
 
+class CheckoutEmailPayload {
+  const CheckoutEmailPayload({
+    required this.cart,
+    required this.reference,
+    required this.emailUser,
+    required this.organization,
+    required this.logo,
+    this.lang = 'fr',
+    this.hasShippingFeed = false,
+    this.shippingThreshold = 'NaN',
+  });
+
+  final CustomerCart cart;
+  final String reference;
+  final String emailUser;
+  final String organization;
+  final String logo;
+  final String lang;
+  final bool hasShippingFeed;
+  final String shippingThreshold;
+
+  Map<String, dynamic> toFormData() {
+    if (cart.isEmpty) {
+      throw StateError('Panier vide.');
+    }
+
+    final total = _moneyDt(cart.total);
+
+    return {
+      'orderUrl': ApiConstants.webOrdersUrl,
+      'emailUser': emailUser.trim(),
+      'totalTTC': total,
+      'totalPrice': _moneyText(cart.total),
+      'total': total,
+      'orderline': jsonEncode(_emailOrderLines()),
+      'reference': reference,
+      'organization': organization.trim(),
+      'logo': logo.trim(),
+      'baseUrl': ApiConstants.tenantBaseUrl,
+      'lang': lang,
+      'hasShippingFeed': hasShippingFeed.toString(),
+      'shippingThreshold': shippingThreshold,
+    };
+  }
+
+  List<Map<String, dynamic>> _emailOrderLines() {
+    return cart.items
+        .map((item) {
+          final itemId = item.orderItemId ?? _idFromProductKey(item.productKey);
+          final itemUnitId = item.orderItemUnitId;
+
+          if (itemId == null || itemId.trim().isEmpty) {
+            throw StateError('ID article manquant pour ${item.name}.');
+          }
+
+          if (itemUnitId == null || itemUnitId.trim().isEmpty) {
+            throw StateError('ID unite manquant pour ${item.name}.');
+          }
+
+          return {
+            'id': _numericOrText(itemId),
+            'itemUnitId': _numericOrText(itemUnitId),
+            'finalPrice': _moneyDt(item.lineTotal),
+            'unitPrice': _moneyText(item.unitPrice ?? 0),
+            'tax': '',
+            'productName': item.name,
+            'productReference': item.reference ?? '',
+            'imageUrl': item.imageUrl ?? '',
+            'quantity': item.quantity,
+            'salesQty': item.quantity.toString(),
+            'formattedUnitPrice': _moneyDt(item.unitPrice ?? 0),
+          };
+        })
+        .toList(growable: false);
+  }
+}
+
 String _moneyText(double value) {
   return _money(value).toString();
+}
+
+String _moneyDt(double value) {
+  return '${value.toStringAsFixed(3)} DT';
 }
 
 num _money(double value) {

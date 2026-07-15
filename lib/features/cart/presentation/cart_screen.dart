@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/storage/secure_storage_service.dart';
 import '../domain/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../../catalog/providers/catalog_provider.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
-  const CartScreen({super.key});
+  const CartScreen({super.key, this.onContinueShopping});
+
+  final VoidCallback? onContinueShopping;
 
   @override
   ConsumerState<CartScreen> createState() => _CartScreenState();
@@ -78,15 +81,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return _CartSummary(
       cart: customerCart,
       minimumOrderTotal: minimumOrderTotal,
+      onContinueShopping: widget.onContinueShopping,
     );
   }
 }
 
 class _CartSummary extends ConsumerStatefulWidget {
-  const _CartSummary({required this.cart, required this.minimumOrderTotal});
+  const _CartSummary({
+    required this.cart,
+    required this.minimumOrderTotal,
+    required this.onContinueShopping,
+  });
 
   final CustomerCart cart;
   final double minimumOrderTotal;
+  final VoidCallback? onContinueShopping;
 
   @override
   ConsumerState<_CartSummary> createState() => _CartSummaryState();
@@ -280,20 +289,31 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
     setState(() => _isSubmitting = true);
 
     try {
-      final reference = await ref
-          .read(cartOrderApiProvider)
-          .addOrder(
-            cart: cart,
-            deliveryDate: deliveryDate,
-            deliveryComment: _commentController.text,
-          );
+      final cartOrderApi = ref.read(cartOrderApiProvider);
+      final reference = await cartOrderApi.addOrder(
+        cart: cart,
+        deliveryDate: deliveryDate,
+        deliveryComment: _commentController.text,
+      );
+
+      try {
+        await cartOrderApi.checkoutEmail(cart: cart, reference: reference);
+      } catch (_) {
+        // La commande reste valide meme si l'e-mail de confirmation echoue.
+      }
+
+      final organization = await SecureStorageService.getOrganisation();
 
       await ref.read(cartControllerProvider.notifier).clear();
 
       if (!mounted) return;
       _commentController.clear();
       setState(() => _deliveryDate = null);
-      _showMessage('Commande $reference creee avec succes.');
+
+      await _showOrderSuccessDialog(
+        reference: reference,
+        organization: organization,
+      );
     } catch (error) {
       if (!mounted) return;
       _showMessage('Impossible de valider la commande: $error');
@@ -306,6 +326,26 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showOrderSuccessDialog({
+    required String reference,
+    required String? organization,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return _OrderSuccessDialog(
+          reference: reference,
+          organization: organization,
+          onContinueShopping: () {
+            Navigator.of(context).pop();
+            widget.onContinueShopping?.call();
+          },
+        );
+      },
+    );
   }
 
   void _runCartAction(
@@ -479,6 +519,132 @@ class _CheckoutPanel extends StatelessWidget {
           const SizedBox(height: 14),
           _SummaryRow(label: 'Total', value: _formatDt(cart.total), dark: true),
         ],
+      ),
+    );
+  }
+}
+
+class _OrderSuccessDialog extends StatelessWidget {
+  const _OrderSuccessDialog({
+    required this.reference,
+    required this.organization,
+    required this.onContinueShopping,
+  });
+
+  final String reference;
+  final String? organization;
+  final VoidCallback onContinueShopping;
+
+  @override
+  Widget build(BuildContext context) {
+    final organizationName = organization?.trim();
+    final companyText = organizationName == null || organizationName.isEmpty
+        ? 'la societe'
+        : organizationName;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: _CartColors.successSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: _CartColors.successButton,
+                  size: 38,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Commande enregistree',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _CartColors.ink,
+                  fontSize: 22,
+                  height: 1.18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _CartColors.softSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _CartColors.surfaceBorder),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Reference commande',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _CartColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      reference,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _CartColors.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Votre commande sera confirmee apres validation officielle par $companyText.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _CartColors.muted,
+                  fontSize: 13.5,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  onPressed: onContinueShopping,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _CartColors.successButton,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  child: const Text('Continuer vos achats'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -967,6 +1133,8 @@ class _CartColors {
   static const primarySoft = Color(0xFFEAF2FF);
   static const success = Color(0xFF22C55E);
   static const successDark = Color(0xFF198754);
+  static const successButton = Color(0xFF3E9678);
+  static const successSoft = Color(0xFFE7F5EF);
   static const warning = Color(0xFFF97316);
   static const danger = Color(0xFFE11D48);
   static const dangerSoft = Color(0xFFFFE4EA);

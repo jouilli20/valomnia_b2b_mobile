@@ -7,6 +7,13 @@ class ApiConstants {
   /// Tenant Base URL
   static const String tenantBaseUrl = 'https://agro.valomnia.com';
 
+  /// Web orders URL used by checkout confirmation emails.
+  static const String webOrdersUrl = 'https://shop.valomnia.com/orders';
+
+  /// Fallback organization logo used by checkout confirmation emails.
+  static const String organizationLogoUrl =
+      'https://agro.valomnia.com/uploads/agro-1706801472256/photoOrganization/1709559844806_food_industry_icon_2.png';
+
   /// Headers
   static const String jsonContentType = 'application/json';
   static const String formUrlEncodedContentType =
