@@ -90,18 +90,18 @@ final customerMinOrderTotalProvider = FutureProvider.autoDispose<double>((
   ref,
 ) async {
   final catalogApi = ref.read(catalogApiProvider);
-  final customerId = (await SecureStorageService.getCustomerId())?.trim();
+  final customerId = (await SecureStorageService.getCustomerOrderId())?.trim();
 
   if (customerId == null || customerId.isEmpty) {
     log(
-      'Customer ID not found, cannot load minimum order total',
+      'Customer order ID not found, cannot load minimum order total',
       name: 'CatalogProvider',
     );
     throw StateError('Customer ID introuvable.');
   }
 
   log(
-    'Loading minimum order total for customer ID = $customerId',
+    'Loading minimum order total for customer order ID = $customerId',
     name: 'CatalogProvider',
   );
 
