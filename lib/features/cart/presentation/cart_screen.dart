@@ -148,18 +148,6 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            sliver: SliverToBoxAdapter(
-              child: _CheckoutPanel(
-                cart: cart,
-                deliveryDate: _deliveryDate,
-                commentController: _commentController,
-                enabled: !_isSubmitting,
-                onPickDeliveryDate: _pickDeliveryDate,
-              ),
-            ),
-          ),
-          SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             sliver: SliverList.separated(
               itemCount: cart.items.length,
@@ -186,6 +174,18 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
                   ),
                 );
               },
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: _CheckoutPanel(
+                cart: cart,
+                deliveryDate: _deliveryDate,
+                commentController: _commentController,
+                enabled: !_isSubmitting,
+                onPickDeliveryDate: _pickDeliveryDate,
+              ),
             ),
           ),
           SliverPadding(
