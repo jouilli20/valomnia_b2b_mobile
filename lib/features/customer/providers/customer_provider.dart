@@ -2,11 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_storage_service.dart';
 import '../data/customer_api.dart';
+import '../data/user_profile_api.dart';
 import '../domain/customer_profile.dart';
 import '../domain/user_profile.dart';
 
 final customerApiProvider = Provider<CustomerApi>((ref) {
   return CustomerApi();
+});
+
+final userProfileApiProvider = Provider<UserProfileApi>((ref) {
+  return UserProfileApi();
 });
 
 final customerProfileProvider = FutureProvider.autoDispose<CustomerProfileData>(

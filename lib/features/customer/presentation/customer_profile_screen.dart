@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/storage/secure_storage_service.dart';
 import '../domain/customer_profile.dart';
 import '../providers/customer_provider.dart';
 
@@ -88,6 +89,16 @@ class _ProfileContent extends StatelessWidget {
               title: 'Adresse de livraison',
               icon: Icons.local_shipping_outlined,
               child: _AddressBlock(address: customer.shippingAddress),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          sliver: SliverToBoxAdapter(
+            child: _SectionPanel(
+              title: 'Securite',
+              icon: Icons.lock_outline_rounded,
+              child: _PasswordUpdateForm(data: data),
             ),
           ),
         ),
@@ -340,6 +351,213 @@ class _AddressBlock extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PasswordUpdateForm extends ConsumerStatefulWidget {
+  const _PasswordUpdateForm({required this.data});
+
+  final CustomerProfileData data;
+
+  @override
+  ConsumerState<_PasswordUpdateForm> createState() =>
+      _PasswordUpdateFormState();
+}
+
+class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+
+  bool _isSubmitting = false;
+  bool _showOldPassword = false;
+  bool _showNewPassword = false;
+
+  @override
+  void dispose() {
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final form = _formKey.currentState;
+    if (form == null || !form.validate() || _isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final organisation = (await SecureStorageService.getOrganisation())
+          ?.trim();
+      final storedUsername = (await SecureStorageService.getUsername())?.trim();
+      final email = _firstNonEmpty([widget.data.user.email, storedUsername]);
+      final userName = _firstNonEmpty([
+        widget.data.user.name,
+        widget.data.customer.name,
+        email,
+      ]);
+
+      if (organisation == null || organisation.isEmpty) {
+        throw StateError('Organisation introuvable.');
+      }
+      if (email == null || email.isEmpty) {
+        throw StateError('E-mail utilisateur introuvable.');
+      }
+      if (userName == null || userName.isEmpty) {
+        throw StateError('Nom utilisateur introuvable.');
+      }
+
+      final profile = await ref
+          .read(userProfileApiProvider)
+          .updateConnectedUser(
+            organisation: organisation,
+            email: email,
+            oldPassword: _oldPasswordController.text,
+            newPassword: _newPasswordController.text,
+            userName: userName,
+          );
+
+      if (profile.email != null) {
+        await SecureStorageService.saveUsername(profile.email!);
+      }
+
+      if (!mounted) return;
+      _oldPasswordController.clear();
+      _newPasswordController.clear();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Mot de passe mis a jour.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible de mettre a jour le mot de passe: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PasswordField(
+            controller: _oldPasswordController,
+            label: 'Ancien mot de passe',
+            hint: 'Entrez votre ancien mot de passe',
+            isVisible: _showOldPassword,
+            textInputAction: TextInputAction.next,
+            onVisibilityChanged: () {
+              setState(() => _showOldPassword = !_showOldPassword);
+            },
+          ),
+          const SizedBox(height: 14),
+          _PasswordField(
+            controller: _newPasswordController,
+            label: 'Nouveau mot de passe',
+            hint: 'Entrez votre nouveau mot de passe',
+            isVisible: _showNewPassword,
+            textInputAction: TextInputAction.done,
+            onVisibilityChanged: () {
+              setState(() => _showNewPassword = !_showNewPassword);
+            },
+            onSubmitted: (_) => _submit(),
+            validator: (value) {
+              final text = value?.trim() ?? '';
+              if (text.isEmpty) return 'Champ obligatoire.';
+              if (text == _oldPasswordController.text.trim()) {
+                return 'Le nouveau mot de passe doit etre different.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isSubmitting ? null : _submit,
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: Text(_isSubmitting ? 'Validation...' : 'Valider'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PasswordField extends StatelessWidget {
+  const _PasswordField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.isVisible,
+    required this.onVisibilityChanged,
+    required this.textInputAction,
+    this.onSubmitted,
+    this.validator,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final bool isVisible;
+  final VoidCallback onVisibilityChanged;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final FormFieldValidator<String>? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      obscureText: !isVisible,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onSubmitted,
+      validator:
+          validator ??
+          (value) {
+            final text = value?.trim() ?? '';
+            return text.isEmpty ? 'Champ obligatoire.' : null;
+          },
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: const Icon(Icons.lock_outline_rounded),
+        suffixIcon: IconButton(
+          tooltip: isVisible ? 'Masquer' : 'Afficher',
+          onPressed: onVisibilityChanged,
+          icon: Icon(
+            isVisible
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+          ),
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+}
+
+String? _firstNonEmpty(Iterable<String?> values) {
+  for (final value in values) {
+    final text = value?.trim();
+    if (text != null && text.isNotEmpty) return text;
+  }
+
+  return null;
 }
 
 class _InfoValue extends StatelessWidget {
