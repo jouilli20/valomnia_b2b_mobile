@@ -5,6 +5,7 @@ import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../cart/presentation/cart_screen.dart';
 import '../../customer/presentation/customer_profile_screen.dart';
+import '../../orders/presentation/order_history_screen.dart';
 import '../domain/category.dart';
 import '../providers/catalog_provider.dart';
 import 'home_screen.dart';
@@ -107,6 +108,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             onCategorySelected: _showCategoryItems,
           ),
           1 => CartScreen(onContinueShopping: () => _selectContent(0)),
+          2 => const OrderHistoryScreen(),
           3 => const CustomerProfileScreen(),
           _ => _TabPlaceholder(tab: _tabs[_selectedTabIndex]),
         },
