@@ -37,7 +37,20 @@ void main() {
     });
 
     expect(order.status, 'Non payé');
+    expect(order.paymentStatus, order.status);
     expect(order.raw['status'], 'NOT_PAID');
+  });
+
+  test('CustomerOrder uses delivery status as displayed status label', () {
+    final order = CustomerOrder.fromJson({
+      'reference': 'ORDER2107260147',
+      'deliveryStatus': 'PENDING',
+      'status': 'NOT_PAID',
+    });
+
+    expect(order.status, 'En attente');
+    expect(order.paymentStatus, isNot(order.status));
+    expect(order.raw['deliveryStatus'], 'PENDING');
   });
 
   test('order history uses order customer reference', () async {

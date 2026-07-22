@@ -326,6 +326,12 @@ class _OrderDetailsSheet extends StatelessWidget {
                 label: 'Date de livraison',
                 value: _formatOptionalDate(order.deliveryDate),
               ),
+              if (order.paymentStatus != null)
+                _DetailStatusRow(
+                  icon: Icons.verified_outlined,
+                  label: 'Statut',
+                  status: order.paymentStatus!,
+                ),
               _DetailRow(
                 icon: Icons.payments_outlined,
                 label: 'Total',
@@ -399,6 +405,49 @@ class _DetailRow extends StatelessWidget {
                 fontSize: 13.5,
                 fontWeight: FontWeight.w900,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailStatusRow extends StatelessWidget {
+  const _DetailStatusRow({
+    required this.icon,
+    required this.label,
+    required this.status,
+  });
+
+  final IconData icon;
+  final String label;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, color: _OrderColors.muted, size: 20),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 136,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _OrderColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _StatusPill(status: status),
             ),
           ),
         ],

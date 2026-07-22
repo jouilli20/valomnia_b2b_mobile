@@ -6,6 +6,7 @@ class CustomerOrder {
     required this.total,
     required this.totalLabel,
     required this.status,
+    required this.paymentStatus,
     required this.orderLines,
     required this.raw,
   });
@@ -16,6 +17,7 @@ class CustomerOrder {
   final double? total;
   final String? totalLabel;
   final String status;
+  final String? paymentStatus;
   final List<Map<String, dynamic>> orderLines;
   final Map<String, dynamic> raw;
 
@@ -61,6 +63,7 @@ class CustomerOrder {
       status:
           _statusLabel(
             _firstText(json, const [
+              'deliveryStatus',
               'status',
               'orderStatus',
               'state',
@@ -68,6 +71,9 @@ class CustomerOrder {
             ]),
           ) ??
           'Non defini',
+      paymentStatus: _statusLabel(
+        _firstText(json, const ['status', 'orderStatus', 'state', 'statut']),
+      ),
       orderLines: _firstMapList(json, const [
         'orderLines',
         'orderLine',
@@ -84,6 +90,7 @@ class CustomerOrder {
     return [
       reference,
       status,
+      paymentStatus,
       totalLabel,
       if (createdAt != null) _compactDate(createdAt!),
       if (deliveryDate != null) _compactDate(deliveryDate!),
