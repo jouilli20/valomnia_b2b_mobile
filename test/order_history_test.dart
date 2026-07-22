@@ -50,7 +50,13 @@ void main() {
       'customer': {'id': 11, 'reference': 'CT-01'},
     });
 
-    final ordersApi = _FakeOrdersApi();
+    final ordersApi = _FakeOrdersApi([
+      CustomerOrder.fromJson({
+        'reference': 'ORDER1',
+        'status': 'En attente',
+        'total': 12,
+      }),
+    ]);
     final container = ProviderContainer(
       overrides: [ordersApiProvider.overrideWithValue(ordersApi)],
     );
@@ -62,20 +68,61 @@ void main() {
     );
     expect(ordersApi.requestedCustomerId, 'CT-01');
   });
+
+  test(
+    'order history sorts orders by ascending date and reference sequence',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+
+      await SecureStorageService.saveSession({
+        'success': true,
+        'token': 'token-1',
+        'customerId': 11,
+        'customer': {'id': 11, 'reference': 'CT-01'},
+      });
+
+      final ordersApi = _FakeOrdersApi([
+        CustomerOrder.fromJson({
+          'reference': 'ORDER2107260003',
+          'dateCreated': '2026-07-21T08:30:00Z',
+          'status': 'NOT_PAID',
+        }),
+        CustomerOrder.fromJson({
+          'reference': 'ORDER2007260001',
+          'dateCreated': '2026-07-20T08:30:00Z',
+          'status': 'NOT_PAID',
+        }),
+        CustomerOrder.fromJson({
+          'reference': 'ORDER2107260001',
+          'dateCreated': '2026-07-21T08:30:00Z',
+          'status': 'NOT_PAID',
+        }),
+      ]);
+      final container = ProviderContainer(
+        overrides: [ordersApiProvider.overrideWithValue(ordersApi)],
+      );
+      addTearDown(container.dispose);
+
+      final orders = await container.read(orderHistoryProvider.future);
+
+      expect(orders.map((order) => order.reference), [
+        'ORDER2007260001',
+        'ORDER2107260001',
+        'ORDER2107260003',
+      ]);
+    },
+  );
 }
 
 class _FakeOrdersApi extends OrdersApi {
+  _FakeOrdersApi(this.orders);
+
+  final List<CustomerOrder> orders;
   String? requestedCustomerId;
 
   @override
   Future<List<CustomerOrder>> getOrders({required String customerId}) async {
     requestedCustomerId = customerId;
-    return [
-      CustomerOrder.fromJson({
-        'reference': 'ORDER1',
-        'status': 'En attente',
-        'total': 12,
-      }),
-    ];
+    return orders;
   }
 }
