@@ -624,6 +624,12 @@ String? _lineMoney(Map<String, dynamic> line, List<String> keys) {
 Color _statusColor(String status) {
   final value = status.trim().toLowerCase();
 
+  if (value.contains('not_paid') ||
+      value.contains('unpaid') ||
+      value.contains('non pay')) {
+    return _OrderColors.warning;
+  }
+
   if (value.contains('annul') ||
       value.contains('cancel') ||
       value.contains('reject')) {

@@ -59,12 +59,14 @@ class CustomerOrder {
       total: _parseMoney(totalValue),
       totalLabel: _moneyLabel(totalValue),
       status:
-          _firstText(json, const [
-            'status',
-            'orderStatus',
-            'state',
-            'statut',
-          ]) ??
+          _statusLabel(
+            _firstText(json, const [
+              'status',
+              'orderStatus',
+              'state',
+              'statut',
+            ]),
+          ) ??
           'Non defini',
       orderLines: _firstMapList(json, const [
         'orderLines',
@@ -185,6 +187,24 @@ String? _moneyLabel(dynamic value) {
   }
 
   return _clean(value);
+}
+
+String? _statusLabel(String? value) {
+  final status = _clean(value);
+  if (status == null) return null;
+
+  final normalized = status.toUpperCase().replaceAll(RegExp(r'[\s-]+'), '_');
+
+  return switch (normalized) {
+    'NOT_PAID' || 'UNPAID' => 'Non payé',
+    'PAID' => 'Payee',
+    'PENDING' || 'WAITING' => 'En attente',
+    'CANCELLED' || 'CANCELED' => 'Annulee',
+    'REJECTED' => 'Rejetee',
+    'CONFIRMED' || 'VALIDATED' => 'Validee',
+    'DELIVERED' => 'Livree',
+    _ => status,
+  };
 }
 
 List<Map<String, dynamic>> _firstMapList(

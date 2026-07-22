@@ -30,6 +30,16 @@ void main() {
     expect(order.orderLines, hasLength(1));
   });
 
+  test('CustomerOrder maps technical order status to readable label', () {
+    final order = CustomerOrder.fromJson({
+      'reference': 'ORDER2107260146',
+      'status': 'NOT_PAID',
+    });
+
+    expect(order.status, 'Non payé');
+    expect(order.raw['status'], 'NOT_PAID');
+  });
+
   test('order history uses order customer reference', () async {
     FlutterSecureStorage.setMockInitialValues({});
 
