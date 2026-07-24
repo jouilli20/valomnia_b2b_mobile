@@ -32,29 +32,29 @@ final orderHistoryProvider = FutureProvider.autoDispose<List<CustomerOrder>>((
       .read(ordersApiProvider)
       .getOrders(customerId: customerId);
 
-  return _sortOrdersAscending(orders);
+  return _sortOrdersByRecentDate(orders);
 });
 
-List<CustomerOrder> _sortOrdersAscending(List<CustomerOrder> orders) {
+List<CustomerOrder> _sortOrdersByRecentDate(List<CustomerOrder> orders) {
   final sortedOrders = [...orders];
-  sortedOrders.sort(_compareOrdersAscending);
+  sortedOrders.sort(_compareOrdersByRecentDate);
   return List.unmodifiable(sortedOrders);
 }
 
-int _compareOrdersAscending(CustomerOrder first, CustomerOrder second) {
+int _compareOrdersByRecentDate(CustomerOrder first, CustomerOrder second) {
   final dateComparison = _compareNullableDates(
     first.createdAt ?? first.deliveryDate,
     second.createdAt ?? second.deliveryDate,
   );
-  if (dateComparison != 0) return dateComparison;
+  if (dateComparison != 0) return -dateComparison;
 
   final sequenceComparison = _compareNullableInts(
     _referenceSequence(first.reference),
     _referenceSequence(second.reference),
   );
-  if (sequenceComparison != 0) return sequenceComparison;
+  if (sequenceComparison != 0) return -sequenceComparison;
 
-  return first.reference.compareTo(second.reference);
+  return second.reference.compareTo(first.reference);
 }
 
 int _compareNullableDates(DateTime? first, DateTime? second) {

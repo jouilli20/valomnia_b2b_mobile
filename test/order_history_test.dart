@@ -83,7 +83,7 @@ void main() {
   });
 
   test(
-    'order history sorts orders by ascending date and reference sequence',
+    'order history sorts orders by recent date and reference sequence',
     () async {
       FlutterSecureStorage.setMockInitialValues({});
 
@@ -119,9 +119,9 @@ void main() {
       final orders = await container.read(orderHistoryProvider.future);
 
       expect(orders.map((order) => order.reference), [
-        'ORDER2007260001',
-        'ORDER2107260001',
         'ORDER2107260003',
+        'ORDER2107260001',
+        'ORDER2007260001',
       ]);
     },
   );
