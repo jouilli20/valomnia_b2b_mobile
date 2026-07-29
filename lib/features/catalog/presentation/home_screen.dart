@@ -203,9 +203,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              sliver: SliverToBoxAdapter(
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HomeHeaderDelegate(
+                isRefreshing: isRefreshing,
                 child: _HomeHeader(
                   searchController: _searchController,
                   searchQuery: _searchQuery,
@@ -554,6 +555,43 @@ class _HomeHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _HomeHeaderDelegate({required this.child, required this.isRefreshing});
+
+  static const _baseExtent = 280.0;
+  static const _refreshExtent = 11.0;
+
+  final Widget child;
+  final bool isRefreshing;
+
+  @override
+  double get minExtent => maxExtent;
+
+  @override
+  double get maxExtent => _baseExtent + (isRefreshing ? _refreshExtent : 0);
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(
+      color: _HomeColors.background,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _HomeHeaderDelegate oldDelegate) {
+    return child != oldDelegate.child ||
+        isRefreshing != oldDelegate.isRefreshing;
   }
 }
 
