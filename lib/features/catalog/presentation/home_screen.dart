@@ -366,7 +366,7 @@ class _HomeHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: _HomeColors.darkPanel,
             borderRadius: BorderRadius.circular(16),
@@ -382,8 +382,8 @@ class _HomeHeader extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 78,
-                height: 78,
+                width: 62,
+                height: 62,
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -396,7 +396,7 @@ class _HomeHeader extends StatelessWidget {
                   semanticLabel: 'Organisation',
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,11 +407,11 @@ class _HomeHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _HomeColors.success,
-                        fontSize: 21,
+                        fontSize: 19,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     Text(
                       hasSelectedCategory
                           ? 'Articles de cette categorie'
@@ -420,7 +420,7 @@ class _HomeHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _HomeColors.lightText,
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         height: 1.28,
                         fontWeight: FontWeight.w700,
                       ),
@@ -442,9 +442,9 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Container(
-          height: 54,
+          height: 50,
           decoration: BoxDecoration(
             color: _HomeColors.darkField,
             borderRadius: BorderRadius.circular(16),
@@ -463,14 +463,14 @@ class _HomeHeader extends StatelessWidget {
             onChanged: onSearchChanged,
             style: const TextStyle(
               color: _HomeColors.lightText,
-              fontSize: 14.5,
+              fontSize: 13.5,
               fontWeight: FontWeight.w800,
             ),
             decoration: InputDecoration(
               hintText: 'Rechercher un produit, une categorie...',
               hintStyle: const TextStyle(
                 color: _HomeColors.lightMuted,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
               prefixIcon: const Icon(
@@ -493,7 +493,7 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DefaultTabController(
           key: ValueKey(
             '${filters.length}:${selectedIndex < 0 ? 0 : selectedIndex}',
@@ -501,7 +501,7 @@ class _HomeHeader extends StatelessWidget {
           length: filters.length,
           initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
           child: Container(
-            height: 56,
+            height: 52,
             decoration: BoxDecoration(
               color: _HomeColors.darkField,
               borderRadius: BorderRadius.circular(16),
@@ -514,7 +514,7 @@ class _HomeHeader extends StatelessWidget {
               indicatorSize: TabBarIndicatorSize.tab,
               indicatorPadding: const EdgeInsets.symmetric(
                 horizontal: 4,
-                vertical: 7,
+                vertical: 6,
               ),
               indicator: BoxDecoration(
                 color: _HomeColors.primary,
@@ -523,11 +523,11 @@ class _HomeHeader extends StatelessWidget {
               labelColor: Colors.white,
               unselectedLabelColor: _HomeColors.lightMuted,
               labelStyle: const TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w900,
               ),
               unselectedLabelStyle: const TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w800,
               ),
               labelPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -536,7 +536,7 @@ class _HomeHeader extends StatelessWidget {
               tabs: [
                 for (final filter in filters)
                   Tab(
-                    height: 48,
+                    height: 44,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
@@ -561,7 +561,7 @@ class _HomeHeader extends StatelessWidget {
 class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _HomeHeaderDelegate({required this.child, required this.isRefreshing});
 
-  static const _baseExtent = 280.0;
+  static const _baseExtent = 236.0;
   static const _refreshExtent = 11.0;
 
   final Widget child;
