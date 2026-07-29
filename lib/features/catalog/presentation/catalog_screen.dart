@@ -339,9 +339,9 @@ class _CatalogCategoriesViewState
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-            sliver: SliverToBoxAdapter(child: _buildSearchField()),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _CategorySearchHeaderDelegate(child: _buildSearchField()),
           ),
           if (hierarchy.groups.isEmpty)
             const SliverFillRemaining(
@@ -384,36 +384,73 @@ class _CatalogCategoriesViewState
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      textInputAction: TextInputAction.search,
-      onChanged: (value) => setState(() => _query = value),
-      style: const TextStyle(
-        color: _CatalogColors.ink,
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Rechercher une categorie',
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: _query.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Effacer',
-                onPressed: _clearSearch,
-                icon: const Icon(Icons.close_rounded),
-              ),
-        filled: true,
-        fillColor: _CatalogColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 15,
+    return SizedBox(
+      height: 54,
+      child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        onChanged: (value) => setState(() => _query = value),
+        style: const TextStyle(
+          color: _CatalogColors.ink,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
         ),
-        border: _inputBorder(_CatalogColors.border),
-        enabledBorder: _inputBorder(_CatalogColors.border),
-        focusedBorder: _inputBorder(_CatalogColors.primary, width: 1.5),
+        decoration: InputDecoration(
+          hintText: 'Rechercher une categorie',
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _query.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Effacer',
+                  onPressed: _clearSearch,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+          filled: true,
+          fillColor: _CatalogColors.surface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 15,
+          ),
+          border: _inputBorder(_CatalogColors.border),
+          enabledBorder: _inputBorder(_CatalogColors.border),
+          focusedBorder: _inputBorder(_CatalogColors.primary, width: 1.5),
+        ),
       ),
     );
+  }
+}
+
+class _CategorySearchHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _CategorySearchHeaderDelegate({required this.child});
+
+  static const _extent = 72.0;
+
+  final Widget child;
+
+  @override
+  double get minExtent => _extent;
+
+  @override
+  double get maxExtent => _extent;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(
+      color: _CatalogColors.background,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _CategorySearchHeaderDelegate oldDelegate) {
+    return child != oldDelegate.child;
   }
 }
 
