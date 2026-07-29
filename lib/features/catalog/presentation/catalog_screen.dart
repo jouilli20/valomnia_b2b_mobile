@@ -117,14 +117,14 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         selectedIndex: _selectedTabIndex,
         onDestinationSelected: _selectTab,
         backgroundColor: _CatalogColors.surface,
-        indicatorColor: _CatalogColors.primarySoft,
+        indicatorColor: _CatalogColors.primary,
         surfaceTintColor: Colors.transparent,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           for (final tab in _tabs)
             NavigationDestination(
               icon: Icon(tab.icon),
-              selectedIcon: Icon(tab.selectedIcon),
+              selectedIcon: Icon(tab.selectedIcon, color: Colors.white),
               label: tab.label,
             ),
         ],
