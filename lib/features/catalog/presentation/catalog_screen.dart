@@ -105,6 +105,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             selectedIndex: _selectedContentIndex,
             selectedCategoryId: _selectedCategoryId,
             selectedCategoryName: _selectedCategoryName,
+            onAllSelected: () => _selectContent(0),
             onCategorySelected: _showCategoryItems,
           ),
           1 => CartScreen(onContinueShopping: () => _selectContent(0)),
@@ -138,6 +139,62 @@ class _CatalogContent extends StatelessWidget {
     required this.selectedIndex,
     required this.selectedCategoryId,
     required this.selectedCategoryName,
+    required this.onAllSelected,
+    required this.onCategorySelected,
+  });
+
+  final int selectedIndex;
+  final String? selectedCategoryId;
+  final String? selectedCategoryName;
+  final VoidCallback onAllSelected;
+  final ValueChanged<Category> onCategorySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useTabletHome = constraints.maxWidth >= 840 && selectedIndex == 0;
+
+        if (useTabletHome) {
+          return Row(
+            children: [
+              _TabletCategoryRail(
+                selectedCategoryId: selectedCategoryId,
+                onAllSelected: onAllSelected,
+                onCategorySelected: onCategorySelected,
+              ),
+              const VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: _CatalogColors.darkBorder,
+              ),
+              Expanded(
+                child: HomeScreen(
+                  key: ValueKey('home:${selectedCategoryId ?? 'all'}'),
+                  categoryId: selectedCategoryId,
+                  categoryName: selectedCategoryName,
+                ),
+              ),
+            ],
+          );
+        }
+
+        return _MobileCatalogContent(
+          selectedIndex: selectedIndex,
+          selectedCategoryId: selectedCategoryId,
+          selectedCategoryName: selectedCategoryName,
+          onCategorySelected: onCategorySelected,
+        );
+      },
+    );
+  }
+}
+
+class _MobileCatalogContent extends StatelessWidget {
+  const _MobileCatalogContent({
+    required this.selectedIndex,
+    required this.selectedCategoryId,
+    required this.selectedCategoryName,
     required this.onCategorySelected,
   });
 
@@ -157,6 +214,219 @@ class _CatalogContent extends StatelessWidget {
           categoryName: selectedCategoryName,
         ),
         _CatalogCategoriesView(onCategorySelected: onCategorySelected),
+      ],
+    );
+  }
+}
+
+class _TabletCategoryRail extends ConsumerWidget {
+  const _TabletCategoryRail({
+    required this.selectedCategoryId,
+    required this.onAllSelected,
+    required this.onCategorySelected,
+  });
+
+  final String? selectedCategoryId;
+  final VoidCallback onAllSelected;
+  final ValueChanged<Category> onCategorySelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      width: 116,
+      child: ColoredBox(
+        color: _CatalogColors.surface,
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: ref
+              .watch(categoriesProvider)
+              .when(
+                loading: () => const Center(
+                  child: SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: _CatalogColors.primary,
+                    ),
+                  ),
+                ),
+                error: (_, _) => IconButton(
+                  tooltip: 'Reessayer',
+                  onPressed: () => ref.invalidate(categoriesProvider),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    color: _CatalogColors.primary,
+                  ),
+                ),
+                data: (rawCategories) {
+                  final categories = _CatalogHierarchy.from(
+                    rawCategories,
+                  ).groups;
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 18),
+                    children: [
+                      _TabletRailAction(
+                        icon: Icons.arrow_back_rounded,
+                        label: 'Retour',
+                        onTap: onAllSelected,
+                      ),
+                      const SizedBox(height: 8),
+                      _TabletRailAction(
+                        icon: Icons.list_rounded,
+                        label: 'Tous',
+                        selected: selectedCategoryId == null,
+                        onTap: onAllSelected,
+                      ),
+                      const SizedBox(height: 8),
+                      for (final category in categories)
+                        _TabletRailCategoryTile(
+                          category: category,
+                          selectedCategoryId: selectedCategoryId,
+                          onSelected: onCategorySelected,
+                        ),
+                    ],
+                  );
+                },
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabletRailAction extends StatelessWidget {
+  const _TabletRailAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? _CatalogColors.primary : _CatalogColors.muted;
+
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: selected ? _CatalogColors.primarySoft : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 66,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 30),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabletRailCategoryTile extends StatelessWidget {
+  const _TabletRailCategoryTile({
+    required this.category,
+    required this.selectedCategoryId,
+    required this.onSelected,
+    this.depth = 0,
+  });
+
+  final Category category;
+  final String? selectedCategoryId;
+  final ValueChanged<Category> onSelected;
+  final int depth;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = selectedCategoryId == category.id;
+    final children = category.children.take(3);
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: depth * 6.0, bottom: 8),
+          child: Tooltip(
+            message: category.name,
+            child: Material(
+              color: selected ? _CatalogColors.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: () => onSelected(category),
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 76,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox.square(
+                            dimension: 36,
+                            child: _CategoryImage(
+                              imageUrl: category.imageUrl,
+                              icon: category.children.isEmpty
+                                  ? Icons.inventory_2_outlined
+                                  : Icons.category_outlined,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          category.name,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: selected
+                                ? _CatalogColors.primary
+                                : _CatalogColors.ink,
+                            fontSize: 10,
+                            height: 1.08,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        for (final child in children)
+          _TabletRailCategoryTile(
+            category: child,
+            selectedCategoryId: selectedCategoryId,
+            onSelected: onSelected,
+            depth: depth + 1,
+          ),
       ],
     );
   }
@@ -814,6 +1084,7 @@ class _CatalogColors {
   const _CatalogColors._();
 
   static const background = Color(0xFF031126);
+  static const darkBorder = Color(0xFF17335D);
   static const surface = Colors.white;
   static const softSurface = Color(0xFFF1F5F9);
   static const border = Color(0xFFE5EAF1);

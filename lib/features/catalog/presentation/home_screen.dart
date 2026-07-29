@@ -27,6 +27,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   CatalogItemsPage? _lastPage;
   _ProductFilter _lastPageFilter = _ProductFilter.all;
   _ProductFilter _selectedFilter = _ProductFilter.all;
+  _ProductDisplayMode _displayMode = _ProductDisplayMode.grid;
   String _searchQuery = '';
   int _nextOffset = catalogItemsPageSize;
   bool _hasMore = true;
@@ -88,6 +89,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _clearSearch() {
     _searchController.clear();
     setState(() => _searchQuery = '');
+  }
+
+  void _selectDisplayMode(_ProductDisplayMode mode) {
+    if (_displayMode == mode) return;
+    setState(() => _displayMode = mode);
   }
 
   void _resetPagination() {
@@ -213,10 +219,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   selectedCategoryName: widget.categoryName,
                   filters: filters,
                   selectedFilter: _selectedFilter,
+                  displayMode: _displayMode,
                   isRefreshing: isRefreshing,
                   onSearchChanged: _handleSearchChanged,
                   onClearSearch: _clearSearch,
                   onFilterSelected: _selectFilter,
+                  onDisplayModeSelected: _selectDisplayMode,
                 ),
               ),
             ),
@@ -242,37 +250,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               )
             else ...[
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                sliver: SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    final columnCount = _responsiveGridColumnCount(
-                      constraints.crossAxisExtent,
-                    );
+              if (_displayMode == _ProductDisplayMode.grid)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final columnCount = _responsiveGridColumnCount(
+                        constraints.crossAxisExtent,
+                      );
 
-                    return SliverGrid.builder(
-                      itemCount: visibleItems.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columnCount,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.66,
-                      ),
-                      itemBuilder: (context, index) {
-                        final item = visibleItems[index];
-                        return _ProductCard(
-                          item: item,
-                          onTap: () => _showProductDetails(item),
-                          quantity: cart?.quantityFor(item.key) ?? 0,
-                          onAddToCart: () => _incrementCartQuantity(item),
-                          onIncrement: () => _incrementCartQuantity(item),
-                          onDecrement: () => _decrementCartQuantity(item),
-                        );
-                      },
-                    );
-                  },
+                      return SliverGrid.builder(
+                        itemCount: visibleItems.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columnCount,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.66,
+                        ),
+                        itemBuilder: (context, index) {
+                          final item = visibleItems[index];
+                          return _ProductCard(
+                            item: item,
+                            onTap: () => _showProductDetails(item),
+                            quantity: cart?.quantityFor(item.key) ?? 0,
+                            onAddToCart: () => _incrementCartQuantity(item),
+                            onIncrement: () => _incrementCartQuantity(item),
+                            onDecrement: () => _decrementCartQuantity(item),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  sliver: SliverToBoxAdapter(
+                    child: _ProductListTable(
+                      items: visibleItems,
+                      quantityFor: (item) => cart?.quantityFor(item.key) ?? 0,
+                      onTap: _showProductDetails,
+                      onIncrement: _incrementCartQuantity,
+                      onDecrement: _decrementCartQuantity,
+                    ),
+                  ),
                 ),
-              ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
                 sliver: SliverToBoxAdapter(
@@ -340,10 +362,12 @@ class _HomeHeader extends StatelessWidget {
     required this.selectedCategoryName,
     required this.filters,
     required this.selectedFilter,
+    required this.displayMode,
     required this.isRefreshing,
     required this.onSearchChanged,
     required this.onClearSearch,
     required this.onFilterSelected,
+    required this.onDisplayModeSelected,
   });
 
   final TextEditingController searchController;
@@ -351,10 +375,12 @@ class _HomeHeader extends StatelessWidget {
   final String? selectedCategoryName;
   final List<_ProductFilter> filters;
   final _ProductFilter selectedFilter;
+  final _ProductDisplayMode displayMode;
   final bool isRefreshing;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
   final ValueChanged<_ProductFilter> onFilterSelected;
+  final ValueChanged<_ProductDisplayMode> onDisplayModeSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -494,64 +520,75 @@ class _HomeHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        DefaultTabController(
-          key: ValueKey(
-            '${filters.length}:${selectedIndex < 0 ? 0 : selectedIndex}',
-          ),
-          length: filters.length,
-          initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              color: _HomeColors.darkField,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _HomeColors.darkBorder),
-            ),
-            child: TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorPadding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 6,
-              ),
-              indicator: BoxDecoration(
-                color: _HomeColors.primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: _HomeColors.lightMuted,
-              labelStyle: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w900,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-              ),
-              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              onTap: (index) => onFilterSelected(filters[index]),
-              tabs: [
-                for (final filter in filters)
-                  Tab(
-                    height: 44,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(filter.icon, size: 18),
-                          const SizedBox(width: 7),
-                          Text(filter.title),
-                        ],
-                      ),
-                    ),
+        Row(
+          children: [
+            Expanded(
+              child: DefaultTabController(
+                key: ValueKey(
+                  '${filters.length}:${selectedIndex < 0 ? 0 : selectedIndex}',
+                ),
+                length: filters.length,
+                initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
+                child: Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: _HomeColors.darkField,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _HomeColors.darkBorder),
                   ),
-              ],
+                  child: TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorPadding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 6,
+                    ),
+                    indicator: BoxDecoration(
+                      color: _HomeColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: _HomeColors.lightMuted,
+                    labelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    onTap: (index) => onFilterSelected(filters[index]),
+                    tabs: [
+                      for (final filter in filters)
+                        Tab(
+                          height: 44,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(filter.icon, size: 18),
+                                const SizedBox(width: 7),
+                                Text(filter.title),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            _DisplayModeSwitcher(
+              selectedMode: displayMode,
+              onSelected: onDisplayModeSelected,
+            ),
+          ],
         ),
       ],
     );
@@ -561,7 +598,7 @@ class _HomeHeader extends StatelessWidget {
 class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _HomeHeaderDelegate({required this.child, required this.isRefreshing});
 
-  static const _baseExtent = 236.0;
+  static const _baseExtent = 248.0;
   static const _refreshExtent = 11.0;
 
   final Widget child;
@@ -592,6 +629,89 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _HomeHeaderDelegate oldDelegate) {
     return child != oldDelegate.child ||
         isRefreshing != oldDelegate.isRefreshing;
+  }
+}
+
+enum _ProductDisplayMode { grid, list }
+
+class _DisplayModeSwitcher extends StatelessWidget {
+  const _DisplayModeSwitcher({
+    required this.selectedMode,
+    required this.onSelected,
+  });
+
+  final _ProductDisplayMode selectedMode;
+  final ValueChanged<_ProductDisplayMode> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _HomeColors.darkField,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _HomeColors.darkBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DisplayModeButton(
+            mode: _ProductDisplayMode.list,
+            selected: selectedMode == _ProductDisplayMode.list,
+            icon: Icons.view_list_rounded,
+            tooltip: 'Liste',
+            onSelected: onSelected,
+          ),
+          _DisplayModeButton(
+            mode: _ProductDisplayMode.grid,
+            selected: selectedMode == _ProductDisplayMode.grid,
+            icon: Icons.grid_view_rounded,
+            tooltip: 'Grille',
+            onSelected: onSelected,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DisplayModeButton extends StatelessWidget {
+  const _DisplayModeButton({
+    required this.mode,
+    required this.selected,
+    required this.icon,
+    required this.tooltip,
+    required this.onSelected,
+  });
+
+  final _ProductDisplayMode mode;
+  final bool selected;
+  final IconData icon;
+  final String tooltip;
+  final ValueChanged<_ProductDisplayMode> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: selected ? _HomeColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => onSelected(mode),
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox.square(
+            dimension: 42,
+            child: Icon(
+              icon,
+              size: 21,
+              color: selected ? Colors.white : _HomeColors.lightMuted,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -726,6 +846,303 @@ class _ProductCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProductListTable extends StatelessWidget {
+  const _ProductListTable({
+    required this.items,
+    required this.quantityFor,
+    required this.onTap,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  final List<_ProductItem> items;
+  final int Function(_ProductItem item) quantityFor;
+  final ValueChanged<_ProductItem> onTap;
+  final ValueChanged<_ProductItem> onIncrement;
+  final ValueChanged<_ProductItem> onDecrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _HomeColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      elevation: 5,
+      shadowColor: const Color(0x33000614),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          children: [
+            const _ProductListHeader(),
+            for (var index = 0; index < items.length; index++)
+              _ProductListRow(
+                item: items[index],
+                quantity: quantityFor(items[index]),
+                showDivider: index != items.length - 1,
+                onTap: () => onTap(items[index]),
+                onIncrement: () => onIncrement(items[index]),
+                onDecrement: () => onDecrement(items[index]),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductListHeader extends StatelessWidget {
+  const _ProductListHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      color: _HomeColors.softSurface,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: const Row(
+        children: [
+          SizedBox(width: 34),
+          Expanded(flex: 4, child: _ProductListHeaderText('Nom')),
+          Expanded(flex: 2, child: _ProductListHeaderText('Reference')),
+          Expanded(flex: 2, child: _ProductListHeaderText('Prix')),
+          SizedBox(width: 122, child: _ProductListHeaderText('Quantite')),
+          Expanded(flex: 2, child: _ProductListHeaderText('Unite')),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductListHeaderText extends StatelessWidget {
+  const _ProductListHeaderText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _HomeColors.muted,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.swap_vert_rounded,
+          size: 15,
+          color: _HomeColors.primary,
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductListRow extends StatelessWidget {
+  const _ProductListRow({
+    required this.item,
+    required this.quantity,
+    required this.showDivider,
+    required this.onTap,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  final _ProductItem item;
+  final int quantity;
+  final bool showDivider;
+  final VoidCallback onTap;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: quantity > 0 ? const Color(0xFFF7FCFC) : _HomeColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: showDivider ? _HomeColors.border : Colors.transparent,
+          ),
+          left: BorderSide(
+            color: quantity > 0 ? _HomeColors.success : Colors.transparent,
+            width: 3,
+          ),
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 58,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 34,
+                  child: Icon(
+                    quantity > 0
+                        ? Icons.check_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: quantity > 0
+                        ? _HomeColors.success
+                        : _HomeColors.faint,
+                    size: 22,
+                  ),
+                ),
+                Expanded(
+                  flex: 4,
+                  child: _ProductListCell(
+                    text: item.name,
+                    color: _HomeColors.ink,
+                    fontWeight: FontWeight.w900,
+                    maxLines: 2,
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _ProductListCell(text: item.reference ?? '-'),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _ProductListCell(
+                    text: item.price ?? '-',
+                    color: _HomeColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(
+                  width: 122,
+                  child: _InlineQuantityStepper(
+                    quantity: quantity,
+                    onIncrement: onIncrement,
+                    onDecrement: onDecrement,
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _ProductListCell(text: item.unit ?? '-'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductListCell extends StatelessWidget {
+  const _ProductListCell({
+    required this.text,
+    this.color = _HomeColors.muted,
+    this.fontWeight = FontWeight.w800,
+    this.maxLines = 1,
+  });
+
+  final String text;
+  final Color color;
+  final FontWeight fontWeight;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: Text(
+        text,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: color,
+          fontSize: 12.5,
+          height: 1.15,
+          fontWeight: fontWeight,
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineQuantityStepper extends StatelessWidget {
+  const _InlineQuantityStepper({
+    required this.quantity,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  final int quantity;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _InlineQuantityButton(
+          icon: Icons.remove_rounded,
+          tooltip: 'Retirer',
+          onPressed: quantity > 0 ? onDecrement : null,
+        ),
+        SizedBox(
+          width: 38,
+          child: Text(
+            quantity.toString(),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _HomeColors.muted,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        _InlineQuantityButton(
+          icon: Icons.add_rounded,
+          tooltip: 'Ajouter',
+          onPressed: onIncrement,
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineQuantityButton extends StatelessWidget {
+  const _InlineQuantityButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        icon,
+        size: 20,
+        color: onPressed == null ? _HomeColors.faint : _HomeColors.promo,
       ),
     );
   }
