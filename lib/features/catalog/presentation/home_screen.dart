@@ -199,6 +199,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       searchQuery: _searchQuery,
     );
     final canLoadMore = _nextOffset < page.total && visibleItems.isNotEmpty;
+    final showDisplayModeSwitcher = _isTabletLayout(context);
+    final displayMode = showDisplayModeSwitcher
+        ? _displayMode
+        : _ProductDisplayMode.grid;
 
     return ColoredBox(
       color: _HomeColors.background,
@@ -219,7 +223,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   selectedCategoryName: widget.categoryName,
                   filters: filters,
                   selectedFilter: _selectedFilter,
-                  displayMode: _displayMode,
+                  displayMode: displayMode,
+                  showDisplayModeSwitcher: showDisplayModeSwitcher,
                   isRefreshing: isRefreshing,
                   onSearchChanged: _handleSearchChanged,
                   onClearSearch: _clearSearch,
@@ -250,7 +255,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               )
             else ...[
-              if (_displayMode == _ProductDisplayMode.grid)
+              if (displayMode == _ProductDisplayMode.grid)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                   sliver: SliverLayoutBuilder(
@@ -363,6 +368,7 @@ class _HomeHeader extends StatelessWidget {
     required this.filters,
     required this.selectedFilter,
     required this.displayMode,
+    required this.showDisplayModeSwitcher,
     required this.isRefreshing,
     required this.onSearchChanged,
     required this.onClearSearch,
@@ -376,6 +382,7 @@ class _HomeHeader extends StatelessWidget {
   final List<_ProductFilter> filters;
   final _ProductFilter selectedFilter;
   final _ProductDisplayMode displayMode;
+  final bool showDisplayModeSwitcher;
   final bool isRefreshing;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
@@ -583,11 +590,13 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            _DisplayModeSwitcher(
-              selectedMode: displayMode,
-              onSelected: onDisplayModeSelected,
-            ),
+            if (showDisplayModeSwitcher) ...[
+              const SizedBox(width: 10),
+              _DisplayModeSwitcher(
+                selectedMode: displayMode,
+                onSelected: onDisplayModeSelected,
+              ),
+            ],
           ],
         ),
       ],
@@ -1880,6 +1889,10 @@ int _responsiveGridColumnCount(double width) {
   if (width >= 720) return 4;
   if (width >= 520) return 3;
   return 2;
+}
+
+bool _isTabletLayout(BuildContext context) {
+  return MediaQuery.sizeOf(context).shortestSide >= 600;
 }
 
 String _itemKey(dynamic item) {
