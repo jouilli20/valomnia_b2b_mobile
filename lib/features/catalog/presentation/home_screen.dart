@@ -2078,12 +2078,55 @@ String? _itemPrice(dynamic item) {
 String? _itemDescription(dynamic item) {
   if (item is! Map) return null;
 
-  for (final key in ['shortDescription', 'description', 'details', 'note']) {
-    final value = _clean(item[key]);
-    if (value != null && value != _itemName(item)) return value;
+  final directDescription = _descriptionFromMap(item, const [
+    'description',
+    'itemDescription',
+    'longDescription',
+    'details',
+    'note',
+  ]);
+  if (directDescription != null) return directDescription;
+
+  for (final key in ['item', 'product', 'article']) {
+    final nestedValue = item[key];
+    if (nestedValue is Map) {
+      final description = _itemDescription(nestedValue);
+      if (description != null) return description;
+    }
+  }
+
+  return _descriptionFromMap(item, const ['shortDescription']);
+}
+
+String? _descriptionFromMap(Map item, List<String> keys) {
+  final itemName = _itemName(item);
+
+  for (final key in keys) {
+    final value = _descriptionText(item[key]);
+    if (value != null && value != itemName) return value;
   }
 
   return null;
+}
+
+String? _descriptionText(dynamic value) {
+  if (value is List) {
+    for (final entry in value) {
+      final text = _descriptionText(entry);
+      if (text != null) return text;
+    }
+    return null;
+  }
+
+  if (value is Map) {
+    for (final key in ['description', 'value', 'text', 'content', 'label']) {
+      final text = _descriptionText(value[key]);
+      if (text != null) return text;
+    }
+    return null;
+  }
+
+  return _clean(value);
 }
 
 String? _itemCategory(dynamic item) {
