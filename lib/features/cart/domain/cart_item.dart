@@ -5,6 +5,7 @@ class CartItem {
     required this.quantity,
     this.reference,
     this.imageUrl,
+    this.salesQty = 1,
     this.unitPrice,
     this.priceLabel,
     this.orderItemId,
@@ -18,6 +19,7 @@ class CartItem {
       reference: _clean(json['reference']),
       imageUrl: _clean(json['imageUrl']),
       quantity: _positiveInt(json['quantity']),
+      salesQty: _positiveInt(json['salesQty'], fallback: 1),
       unitPrice: _optionalDouble(json['unitPrice']),
       priceLabel: _clean(json['priceLabel']),
       orderItemId: _clean(json['orderItemId']),
@@ -30,6 +32,7 @@ class CartItem {
   final String? reference;
   final String? imageUrl;
   final int quantity;
+  final int salesQty;
   final double? unitPrice;
   final String? priceLabel;
   final String? orderItemId;
@@ -43,6 +46,7 @@ class CartItem {
     String? reference,
     String? imageUrl,
     int? quantity,
+    int? salesQty,
     double? unitPrice,
     String? priceLabel,
     String? orderItemId,
@@ -54,6 +58,7 @@ class CartItem {
       reference: reference ?? this.reference,
       imageUrl: imageUrl ?? this.imageUrl,
       quantity: quantity ?? this.quantity,
+      salesQty: salesQty ?? this.salesQty,
       unitPrice: unitPrice ?? this.unitPrice,
       priceLabel: priceLabel ?? this.priceLabel,
       orderItemId: orderItemId ?? this.orderItemId,
@@ -68,6 +73,7 @@ class CartItem {
       'reference': reference,
       'imageUrl': imageUrl,
       'quantity': quantity,
+      'salesQty': salesQty,
       'unitPrice': unitPrice,
       'priceLabel': priceLabel,
       'orderItemId': orderItemId,
@@ -132,17 +138,18 @@ class CustomerCart {
 
   CustomerCart increment(CartItem item) {
     final currentQuantity = quantityFor(item.productKey);
-    return upsert(item.copyWith(quantity: currentQuantity + 1));
+    return upsert(item.copyWith(quantity: currentQuantity + item.salesQty));
   }
 
   CustomerCart decrement(String productKey) {
     final currentQuantity = quantityFor(productKey);
-    if (currentQuantity <= 1) return remove(productKey);
+    final salesQty = _salesQtyFor(productKey);
+    if (currentQuantity <= salesQty) return remove(productKey);
 
     final updatedItems = items
         .map(
           (item) => item.productKey == productKey
-              ? item.copyWith(quantity: item.quantity - 1)
+              ? item.copyWith(quantity: item.quantity - salesQty)
               : item,
         )
         .toList(growable: false);
@@ -156,6 +163,14 @@ class CustomerCart {
           .where((item) => item.productKey != productKey)
           .toList(growable: false),
     );
+  }
+
+  int _salesQtyFor(String productKey) {
+    for (final item in items) {
+      if (item.productKey == productKey) return item.salesQty;
+    }
+
+    return 1;
   }
 
   CustomerCart copyWith({String? customerId, List<CartItem>? items}) {
@@ -178,9 +193,11 @@ String? _clean(dynamic value) {
   return text == null || text.isEmpty || text == 'null' ? null : text;
 }
 
-int _positiveInt(dynamic value) {
-  final parsed = value is int ? value : int.tryParse(value?.toString() ?? '');
-  if (parsed == null || parsed < 0) return 0;
+int _positiveInt(dynamic value, {int fallback = 0}) {
+  final parsed = value is num
+      ? value.toInt()
+      : double.tryParse(value?.toString().trim() ?? '')?.toInt();
+  if (parsed == null || parsed < 0) return fallback;
   return parsed;
 }
 

@@ -1699,6 +1699,7 @@ class _ProductItem {
     required this.unit,
     required this.barcode,
     required this.stock,
+    required this.salesQty,
     required this.isNew,
     required this.isPromo,
     required this.labelName,
@@ -1717,6 +1718,7 @@ class _ProductItem {
   final String? unit;
   final String? barcode;
   final String? stock;
+  final int salesQty;
   final bool isNew;
   final bool isPromo;
   final String? labelName;
@@ -1736,6 +1738,7 @@ class _ProductItem {
       unit: _itemUnit(item),
       barcode: _itemBarcode(item),
       stock: _itemStock(item),
+      salesQty: _itemSalesQty(item),
       isNew: _boolValue(item, 'isNew'),
       isPromo: _boolValue(item, 'isPromo'),
       labelName: _stringValue(item, 'labelName'),
@@ -1862,6 +1865,7 @@ CartItem _cartItemFromProduct(_ProductItem item) {
     reference: item.reference,
     imageUrl: item.imageUrl,
     quantity: 1,
+    salesQty: item.salesQty,
     unitPrice: _parsePriceValue(item.price),
     priceLabel: item.price,
     orderItemId: item.orderItemId,
@@ -2193,6 +2197,40 @@ String? _itemStock(dynamic item) {
   }
 
   return null;
+}
+
+int _itemSalesQty(dynamic item) {
+  if (item is! Map) return 1;
+
+  for (final key in ['salesQty', 'saleQty', 'salesQuantity']) {
+    final value = _positiveInt(item[key]);
+    if (value != null) return value;
+  }
+
+  for (final key in ['itemUnit', 'unit', 'salesUnit', 'defaultUnit']) {
+    final unit = item[key];
+    if (unit is Map) {
+      final value = _itemSalesQty(unit);
+      if (value > 1) return value;
+    }
+  }
+
+  return 1;
+}
+
+int? _positiveInt(dynamic value) {
+  if (value == null) return null;
+
+  if (value is num) {
+    final parsed = value.toInt();
+    return parsed > 0 ? parsed : null;
+  }
+
+  final text = _clean(value);
+  if (text == null) return null;
+
+  final parsed = double.tryParse(text)?.toInt();
+  return parsed != null && parsed > 0 ? parsed : null;
 }
 
 bool _boolValue(dynamic item, String key) {

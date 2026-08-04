@@ -40,6 +40,23 @@ void main() {
     expect(cart.total, 29);
   });
 
+  test('CustomerCart increments and decrements by item salesQty', () {
+    const item = CartItem(
+      productKey: 'item-1',
+      name: 'Article 1',
+      quantity: 1,
+      salesQty: 20,
+      unitPrice: 2,
+    );
+
+    final cart = CustomerCart.empty(
+      'customer-1',
+    ).increment(item).increment(item).decrement('item-1');
+
+    expect(cart.quantityFor('item-1'), 20);
+    expect(cart.total, 40);
+  });
+
   test('CartRepository keeps carts separated by customer id', () async {
     SharedPreferences.setMockInitialValues({});
     const repository = CartRepository();

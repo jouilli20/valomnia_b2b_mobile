@@ -14,15 +14,7 @@ void main() {
   testWidgets('product details uses API description before shortDescription', (
     tester,
   ) async {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-
-    await SecureStorageService.saveSession({
-      'success': true,
-      'token': 'token-1',
-      'customerId': 11,
-      'customer': {'id': 11, 'reference': 'CT-01'},
-    });
+    await _setSession();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -37,6 +29,35 @@ void main() {
 
     expect(find.text('Description venant de POST /api/items'), findsOneWidget);
     expect(find.text('15/02/2024 12:30'), findsNothing);
+  });
+
+  testWidgets('adding product uses salesQty from items API', (tester) async {
+    await _setSession();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [catalogApiProvider.overrideWithValue(_FakeCatalogApi())],
+        child: const MaterialApp(home: Scaffold(body: HomeScreen())),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('20'), findsOneWidget);
+  });
+}
+
+Future<void> _setSession() async {
+  FlutterSecureStorage.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({});
+
+  await SecureStorageService.saveSession({
+    'success': true,
+    'token': 'token-1',
+    'customerId': 11,
+    'customer': {'id': 11, 'reference': 'CT-01'},
   });
 }
 
@@ -65,6 +86,7 @@ class _FakeCatalogApi extends CatalogApi {
           'price': 18,
           'description': 'Description venant de POST /api/items',
           'shortDescription': '15/02/2024 12:30',
+          'salesQty': 20,
           'category': 'SMPA',
           'unit': 'Piece',
           'barcode': '879786',
