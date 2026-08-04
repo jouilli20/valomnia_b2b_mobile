@@ -47,6 +47,27 @@ void main() {
 
     expect(find.text('20'), findsOneWidget);
   });
+
+  testWidgets('product details add button uses salesQty from items API', (
+    tester,
+  ) async {
+    await _setSession();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [catalogApiProvider.overrideWithValue(_FakeCatalogApi())],
+        child: const MaterialApp(home: Scaffold(body: HomeScreen())),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Produit test'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.add_rounded).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('20'), findsWidgets);
+  });
 }
 
 Future<void> _setSession() async {

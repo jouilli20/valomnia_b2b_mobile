@@ -1412,14 +1412,16 @@ class _LoadMoreFooter extends StatelessWidget {
   }
 }
 
-class _ProductDetailsSheet extends StatelessWidget {
+class _ProductDetailsSheet extends ConsumerWidget {
   const _ProductDetailsSheet({required this.item});
 
   final _ProductItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final cart = ref.watch(cartControllerProvider).value;
+    final quantity = cart?.quantityFor(item.key) ?? 0;
 
     return SafeArea(
       top: false,
@@ -1468,17 +1470,34 @@ class _ProductDetailsSheet extends StatelessWidget {
                 ),
               ),
             ],
-            if (item.price != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                item.price!,
-                style: const TextStyle(
-                  color: _HomeColors.primary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: item.price == null
+                      ? const SizedBox.shrink()
+                      : Text(
+                          item.price!,
+                          style: const TextStyle(
+                            color: _HomeColors.primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                if (quantity > 0)
+                  _QuantityPopup(
+                    quantity: quantity,
+                    onIncrement: () => _incrementCartQuantity(context, ref),
+                    onDecrement: () => _decrementCartQuantity(context, ref),
+                  )
+                else
+                  _AddToCartButton(
+                    onPressed: () => _incrementCartQuantity(context, ref),
+                  ),
+              ],
+            ),
             if (item.description != null) ...[
               const SizedBox(height: 16),
               Text(
@@ -1516,6 +1535,43 @@ class _ProductDetailsSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _incrementCartQuantity(BuildContext context, WidgetRef ref) {
+    unawaited(
+      _runCartAction(
+        context,
+        ref,
+        (controller) => controller.addItem(_cartItemFromProduct(item)),
+      ),
+    );
+  }
+
+  void _decrementCartQuantity(BuildContext context, WidgetRef ref) {
+    unawaited(
+      _runCartAction(
+        context,
+        ref,
+        (controller) => controller.decrementItem(item.key),
+      ),
+    );
+  }
+
+  Future<void> _runCartAction(
+    BuildContext context,
+    WidgetRef ref,
+    Future<void> Function(CartController controller) action,
+  ) async {
+    try {
+      await action(ref.read(cartControllerProvider.notifier));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible de mettre a jour le panier: $error'),
+        ),
+      );
+    }
   }
 }
 
