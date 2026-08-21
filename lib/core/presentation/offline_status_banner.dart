@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/app_localizations.dart';
 import '../network/connectivity_service.dart';
 
 class OfflineStatusBanner extends ConsumerWidget {
@@ -24,16 +25,16 @@ class OfflineStatusBanner extends ConsumerWidget {
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.wifi_off_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
+              const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Mode hors ligne : les donnees locales restent disponibles, les envois sont bloques.',
+                  context.l10n.text('offlineBanner'),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../domain/customer_profile.dart';
@@ -11,6 +12,7 @@ class CustomerProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final asyncProfile = ref.watch(customerProfileProvider);
     final isOnline = ref
         .watch(isOnlineProvider)
@@ -29,17 +31,17 @@ class CustomerProfileScreen extends ConsumerWidget {
           await ref.read(customerProfileProvider.future);
         },
         child: asyncProfile.when(
-          loading: () => const _ProfileStateView(
+          loading: () => _ProfileStateView(
             icon: Icons.hourglass_top_rounded,
-            title: 'Chargement du profil',
-            message: 'Veuillez patienter.',
+            title: l10n.text('loadingProfile'),
+            message: l10n.text('pleaseWait'),
             showProgress: true,
           ),
           error: (error, _) => _ProfileStateView(
             icon: Icons.wifi_off_rounded,
-            title: 'Impossible de charger le profil',
+            title: l10n.text('profileLoadFailed'),
             message: error.toString(),
-            actionLabel: 'Reessayer',
+            actionLabel: l10n.text('retry'),
             onAction: () => ref.invalidate(customerProfileProvider),
           ),
           data: (data) => _ProfileContent(data: data, isOnline: isOnline),
@@ -57,6 +59,7 @@ class _ProfileContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final customer = data.customer;
 
     return CustomScrollView(
@@ -66,26 +69,23 @@ class _ProfileContent extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
           sliver: SliverToBoxAdapter(
             child: _UserHeader(
-              name: data.user.name ?? 'Utilisateur',
-              email: data.user.email ?? 'E-mail non defini',
+              name: data.user.name ?? l10n.text('userFallback'),
+              email: data.user.email ?? l10n.text('emailNotDefined'),
             ),
           ),
         ),
         if (!isOnline)
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             sliver: SliverToBoxAdapter(
-              child: _OfflineNotice(
-                message:
-                    'Profil affiche depuis le cache local. Les modifications sont disponibles uniquement avec Internet.',
-              ),
+              child: _OfflineNotice(message: l10n.text('profileOffline')),
             ),
           ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           sliver: SliverToBoxAdapter(
             child: _SectionPanel(
-              title: 'Informations client',
+              title: l10n.text('customerInfo'),
               icon: Icons.storefront_outlined,
               child: _CustomerIdentity(customer: customer),
             ),
@@ -95,7 +95,7 @@ class _ProfileContent extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           sliver: SliverToBoxAdapter(
             child: _SectionPanel(
-              title: 'Adresse de facturation',
+              title: l10n.text('billingAddress'),
               icon: Icons.receipt_long_outlined,
               child: _AddressBlock(address: customer.billingAddress),
             ),
@@ -105,7 +105,7 @@ class _ProfileContent extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           sliver: SliverToBoxAdapter(
             child: _SectionPanel(
-              title: 'Adresse de livraison',
+              title: l10n.text('shippingAddress'),
               icon: Icons.local_shipping_outlined,
               child: _AddressBlock(address: customer.shippingAddress),
             ),
@@ -115,7 +115,7 @@ class _ProfileContent extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           sliver: SliverToBoxAdapter(
             child: _SectionPanel(
-              title: 'Securite',
+              title: l10n.text('security'),
               icon: Icons.lock_outline_rounded,
               child: _PasswordUpdateForm(data: data, isOnline: isOnline),
             ),
@@ -134,6 +134,7 @@ class _UserHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -172,8 +173,8 @@ class _UserHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Profil',
+                Text(
+                  l10n.text('profile'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -183,7 +184,7 @@ class _UserHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                _HeaderValue(label: 'Nom & Prenom', value: name),
+                _HeaderValue(label: l10n.text('fullName'), value: name),
                 const SizedBox(height: 10),
                 _HeaderValue(label: 'E-mail', value: email),
               ],
@@ -326,19 +327,36 @@ class _CustomerIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
         final details = _InfoGrid(
           rows: [
-            _InfoRowData(Icons.tag_outlined, 'Reference', customer.reference),
-            _InfoRowData(Icons.business_outlined, 'Nom', customer.name),
+            _InfoRowData(
+              Icons.tag_outlined,
+              l10n.text('reference'),
+              customer.reference,
+            ),
+            _InfoRowData(
+              Icons.business_outlined,
+              l10n.text('name'),
+              customer.name,
+            ),
             _InfoRowData(
               Icons.alternate_email_rounded,
-              'E-mail',
+              l10n.text('email'),
               customer.email,
             ),
-            _InfoRowData(Icons.call_outlined, 'Telephone', customer.phone),
-            _InfoRowData(Icons.smartphone_outlined, 'Mobile', customer.mobile),
+            _InfoRowData(
+              Icons.call_outlined,
+              l10n.text('phone'),
+              customer.phone,
+            ),
+            _InfoRowData(
+              Icons.smartphone_outlined,
+              l10n.text('mobile'),
+              customer.mobile,
+            ),
           ],
         );
 
@@ -387,12 +405,13 @@ class _AddressBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _InfoValue(
           icon: Icons.place_outlined,
-          label: 'Adresse',
+          label: l10n.text('address'),
           value: address.address,
         ),
         const SizedBox(height: 14),
@@ -400,11 +419,19 @@ class _AddressBlock extends StatelessWidget {
           rows: [
             _InfoRowData(
               Icons.markunread_mailbox_outlined,
-              'Code postal',
+              l10n.text('postalCode'),
               address.postalCode,
             ),
-            _InfoRowData(Icons.location_city_outlined, 'Ville', address.city),
-            _InfoRowData(Icons.flag_outlined, 'Pays', address.country),
+            _InfoRowData(
+              Icons.location_city_outlined,
+              l10n.text('city'),
+              address.city,
+            ),
+            _InfoRowData(
+              Icons.flag_outlined,
+              l10n.text('country'),
+              address.country,
+            ),
           ],
         ),
       ],
@@ -442,11 +469,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
   Future<void> _submit() async {
     if (!widget.isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Une connexion Internet est requise pour modifier le compte.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.text('accountInternetRequired'))),
       );
       return;
     }
@@ -457,6 +480,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
     setState(() => _isSubmitting = true);
 
     try {
+      final l10n = context.l10n;
       final organisation = (await SecureStorageService.getOrganisation())
           ?.trim();
       final storedUsername = (await SecureStorageService.getUsername())?.trim();
@@ -468,13 +492,13 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
       ]);
 
       if (organisation == null || organisation.isEmpty) {
-        throw StateError('Organisation introuvable.');
+        throw StateError(l10n.text('organizationMissing'));
       }
       if (email == null || email.isEmpty) {
-        throw StateError('E-mail utilisateur introuvable.');
+        throw StateError(l10n.text('userEmailMissing'));
       }
       if (userName == null || userName.isEmpty) {
-        throw StateError('Nom utilisateur introuvable.');
+        throw StateError(l10n.text('userNameMissing'));
       }
 
       final profile = await ref
@@ -494,15 +518,13 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
       if (!mounted) return;
       _oldPasswordController.clear();
       _newPasswordController.clear();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Mot de passe mis a jour.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('passwordUpdated'))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Impossible de mettre a jour le mot de passe: $error'),
-        ),
+        SnackBar(content: Text(context.l10n.passwordUpdateFailed(error))),
       );
     } finally {
       if (mounted) {
@@ -513,6 +535,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Form(
       key: _formKey,
       child: Column(
@@ -520,8 +543,8 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
         children: [
           _PasswordField(
             controller: _oldPasswordController,
-            label: 'Ancien mot de passe',
-            hint: 'Entrez votre ancien mot de passe',
+            label: l10n.text('oldPassword'),
+            hint: l10n.text('oldPasswordHint'),
             enabled: widget.isOnline && !_isSubmitting,
             isVisible: _showOldPassword,
             textInputAction: TextInputAction.next,
@@ -532,8 +555,8 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
           const SizedBox(height: 14),
           _PasswordField(
             controller: _newPasswordController,
-            label: 'Nouveau mot de passe',
-            hint: 'Entrez votre nouveau mot de passe',
+            label: l10n.text('newPassword'),
+            hint: l10n.text('newPasswordHint'),
             enabled: widget.isOnline && !_isSubmitting,
             isVisible: _showNewPassword,
             textInputAction: TextInputAction.done,
@@ -543,9 +566,9 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
             onSubmitted: (_) => _submit(),
             validator: (value) {
               final text = value?.trim() ?? '';
-              if (text.isEmpty) return 'Champ obligatoire.';
+              if (text.isEmpty) return l10n.text('fieldRequired');
               if (text == _oldPasswordController.text.trim()) {
-                return 'Le nouveau mot de passe doit etre different.';
+                return l10n.text('newPasswordMustDiffer');
               }
               return null;
             },
@@ -562,7 +585,9 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_rounded),
-              label: Text(_isSubmitting ? 'Validation...' : 'Valider'),
+              label: Text(
+                _isSubmitting ? l10n.text('validating') : l10n.text('validate'),
+              ),
             ),
           ),
         ],
@@ -606,14 +631,16 @@ class _PasswordField extends StatelessWidget {
           validator ??
           (value) {
             final text = value?.trim() ?? '';
-            return text.isEmpty ? 'Champ obligatoire.' : null;
+            return text.isEmpty ? context.l10n.text('fieldRequired') : null;
           },
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         suffixIcon: IconButton(
-          tooltip: isVisible ? 'Masquer' : 'Afficher',
+          tooltip: isVisible
+              ? context.l10n.text('hide')
+              : context.l10n.text('show'),
           onPressed: enabled ? onVisibilityChanged : null,
           icon: Icon(
             isVisible

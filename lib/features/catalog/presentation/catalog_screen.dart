@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/presentation/language_selector.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../cart/presentation/cart_screen.dart';
@@ -67,7 +69,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _tabs[_selectedTabIndex].label;
+    final title = _tabs[_selectedTabIndex].label(context);
 
     return Scaffold(
       backgroundColor: _CatalogColors.background,
@@ -89,8 +91,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           fontWeight: FontWeight.w900,
         ),
         actions: [
+          const LanguageSelector(),
           IconButton(
-            tooltip: 'Deconnexion',
+            tooltip: context.l10n.text('logout'),
             icon: const Icon(Icons.logout_rounded),
             onPressed: _logout,
           ),
@@ -126,7 +129,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             NavigationDestination(
               icon: Icon(tab.icon),
               selectedIcon: Icon(tab.selectedIcon, color: Colors.white),
-              label: tab.label,
+              label: tab.label(context),
             ),
         ],
       ),
@@ -232,6 +235,7 @@ class _TabletCategoryRail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     return SizedBox(
       width: 116,
       child: ColoredBox(
@@ -252,7 +256,7 @@ class _TabletCategoryRail extends ConsumerWidget {
                   ),
                 ),
                 error: (_, _) => IconButton(
-                  tooltip: 'Reessayer',
+                  tooltip: l10n.text('retry'),
                   onPressed: () => ref.invalidate(categoriesProvider),
                   icon: const Icon(
                     Icons.refresh_rounded,
@@ -269,13 +273,13 @@ class _TabletCategoryRail extends ConsumerWidget {
                     children: [
                       _TabletRailAction(
                         icon: Icons.arrow_back_rounded,
-                        label: 'Retour',
+                        label: l10n.text('back'),
                         onTap: onAllSelected,
                       ),
                       const SizedBox(height: 8),
                       _TabletRailAction(
                         icon: Icons.list_rounded,
-                        label: 'Tous',
+                        label: l10n.text('all'),
                         selected: selectedCategoryId == null,
                         onTap: onAllSelected,
                       ),
@@ -440,6 +444,7 @@ class _CatalogDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Drawer(
       backgroundColor: _CatalogColors.surface,
       surfaceTintColor: Colors.transparent,
@@ -450,7 +455,7 @@ class _CatalogDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
               child: Text(
-                'Catalogue',
+                l10n.text('catalog'),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: _CatalogColors.ink,
                   fontWeight: FontWeight.w900,
@@ -458,7 +463,7 @@ class _CatalogDrawer extends StatelessWidget {
               ),
             ),
             _CatalogDrawerItem(
-              label: 'Articles',
+              label: l10n.text('items'),
               icon: Icons.inventory_2_outlined,
               selectedIcon: Icons.inventory_2_rounded,
               selected: selectedIndex == 0,
@@ -466,7 +471,7 @@ class _CatalogDrawer extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             _CatalogDrawerItem(
-              label: 'Categories',
+              label: l10n.text('categories'),
               icon: Icons.category_outlined,
               selectedIcon: Icons.category_rounded,
               selected: selectedIndex == 1,
@@ -579,20 +584,21 @@ class _CatalogCategoriesViewState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ref
         .watch(categoriesProvider)
         .when(
-          loading: () => const _StateView(
+          loading: () => _StateView(
             icon: Icons.hourglass_top_rounded,
-            title: 'Chargement du catalogue',
-            message: 'Veuillez patienter.',
+            title: l10n.text('loadingCatalog'),
+            message: l10n.text('pleaseWait'),
             showProgress: true,
           ),
           error: (error, _) => _StateView(
             icon: Icons.wifi_off_rounded,
-            title: 'Impossible de charger le catalogue',
+            title: l10n.text('catalogLoadFailed'),
             message: error.toString(),
-            actionLabel: 'Reessayer',
+            actionLabel: l10n.text('retry'),
             onAction: () => ref.invalidate(categoriesProvider),
           ),
           data: _buildCategoryList,
@@ -600,6 +606,7 @@ class _CatalogCategoriesViewState
   }
 
   Widget _buildCategoryList(List<dynamic> rawCategories) {
+    final l10n = context.l10n;
     final hierarchy = _CatalogHierarchy.from(rawCategories);
     final categories = hierarchy.filter(_query);
 
@@ -614,12 +621,12 @@ class _CatalogCategoriesViewState
             delegate: _CategorySearchHeaderDelegate(child: _buildSearchField()),
           ),
           if (hierarchy.groups.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               hasScrollBody: false,
               child: _StateView(
                 icon: Icons.inventory_2_outlined,
-                title: 'Aucune categorie trouvee',
-                message: 'Tirez vers le bas pour actualiser le catalogue.',
+                title: l10n.text('noCategoryFound'),
+                message: l10n.text('pullToRefreshCatalog'),
               ),
             )
           else if (categories.isEmpty)
@@ -627,9 +634,9 @@ class _CatalogCategoriesViewState
               hasScrollBody: false,
               child: _StateView(
                 icon: Icons.search_off_rounded,
-                title: 'Aucun resultat',
-                message: 'Essayez un autre mot-cle.',
-                actionLabel: 'Effacer',
+                title: l10n.text('noResult'),
+                message: l10n.text('tryAnotherKeyword'),
+                actionLabel: l10n.text('clear'),
                 onAction: _clearSearch,
               ),
             )
@@ -654,6 +661,7 @@ class _CatalogCategoriesViewState
   }
 
   Widget _buildSearchField() {
+    final l10n = context.l10n;
     return SizedBox(
       height: 54,
       child: TextField(
@@ -666,12 +674,12 @@ class _CatalogCategoriesViewState
           fontWeight: FontWeight.w700,
         ),
         decoration: InputDecoration(
-          hintText: 'Rechercher une categorie',
+          hintText: l10n.text('searchCategory'),
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: _query.isEmpty
               ? null
               : IconButton(
-                  tooltip: 'Effacer',
+                  tooltip: l10n.text('clear'),
                   onPressed: _clearSearch,
                   icon: const Icon(Icons.close_rounded),
                 ),
@@ -777,7 +785,9 @@ class _CategoryTreeTileState extends State<_CategoryTreeTile> {
                       const SizedBox(width: 8),
                       _CountBadge(count: category.children.length),
                       IconButton(
-                        tooltip: _expanded ? 'Reduire' : 'Developper',
+                        tooltip: _expanded
+                            ? context.l10n.text('collapse')
+                            : context.l10n.text('expand'),
                         visualDensity: VisualDensity.compact,
                         onPressed: _toggleExpanded,
                         icon: AnimatedRotation(
@@ -1022,8 +1032,8 @@ class _TabPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StateView(
       icon: tab.selectedIcon,
-      title: tab.label,
-      message: 'Cette section sera branchee prochainement.',
+      title: tab.label(context),
+      message: context.l10n.text('sectionComingSoon'),
     );
   }
 }
@@ -1070,14 +1080,16 @@ List<Category> _withoutHomeRoot(List<Category> categories) {
 
 class _CatalogTab {
   const _CatalogTab({
-    required this.label,
+    required this.labelKey,
     required this.icon,
     required this.selectedIcon,
   });
 
-  final String label;
+  final String labelKey;
   final IconData icon;
   final IconData selectedIcon;
+
+  String label(BuildContext context) => context.l10n.text(labelKey);
 }
 
 class _CatalogColors {
@@ -1096,22 +1108,22 @@ class _CatalogColors {
 
 const _tabs = [
   _CatalogTab(
-    label: 'Catalogue',
+    labelKey: 'catalog',
     icon: Icons.layers_outlined,
     selectedIcon: Icons.layers_rounded,
   ),
   _CatalogTab(
-    label: 'Panier',
+    labelKey: 'cart',
     icon: Icons.shopping_cart_outlined,
     selectedIcon: Icons.shopping_cart_rounded,
   ),
   _CatalogTab(
-    label: 'Commandes',
+    labelKey: 'orders',
     icon: Icons.assignment_outlined,
     selectedIcon: Icons.assignment_rounded,
   ),
   _CatalogTab(
-    label: 'Profil',
+    labelKey: 'profile',
     icon: Icons.person_outline_rounded,
     selectedIcon: Icons.person_rounded,
   ),

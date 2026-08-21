@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/presentation/language_selector.dart';
 import '../providers/auth_repository_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -31,6 +33,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
 
     try {
       await ref
@@ -43,13 +46,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
 
       messenger.showSnackBar(
-        const SnackBar(content: Text('Lien de reinitialisation envoye.')),
+        SnackBar(content: Text(l10n.text('resetLinkSent'))),
       );
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
 
-      messenger.showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.genericError(e))));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -64,6 +67,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       backgroundColor: _AuthColors.background,
       body: SafeArea(
@@ -84,13 +89,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _BackButton(onPressed: _goBack),
+                          Row(
+                            children: [
+                              _BackButton(onPressed: _goBack),
+                              const Spacer(),
+                              const LanguageSelector(compact: true),
+                            ],
+                          ),
                           const SizedBox(height: 18),
-                          const _ResetHeader(
+                          _ResetHeader(
                             icon: Icons.lock_reset_rounded,
-                            title: 'Mot de passe oublie',
-                            subtitle:
-                                'Indiquez votre organisation et votre e-mail. Le changement du mot de passe se fait ensuite sur le web.',
+                            title: l10n.text('forgotPasswordTitle'),
+                            subtitle: l10n.text('forgotPasswordSubtitle'),
                           ),
                           const SizedBox(height: 22),
                           _ForgotPasswordPanel(
@@ -120,22 +130,19 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: IconButton(
-        tooltip: 'Retour',
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: _AuthColors.ink,
-          fixedSize: const Size.square(44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: _AuthColors.border),
-          ),
+    return IconButton(
+      tooltip: context.l10n.text('back'),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: _AuthColors.ink,
+        fixedSize: const Size.square(44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: _AuthColors.border),
         ),
-        icon: const Icon(Icons.arrow_back_rounded, size: 22),
       ),
+      icon: const Icon(Icons.arrow_back_rounded, size: 22),
     );
   }
 }
@@ -240,6 +247,8 @@ class _ForgotPasswordPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -259,27 +268,27 @@ class _ForgotPasswordPanel extends StatelessWidget {
         children: [
           _AuthField(
             controller: organizationController,
-            labelText: 'Organisation',
-            hintText: 'Nom de votre organisation',
+            labelText: l10n.text('organization'),
+            hintText: l10n.text('organizationHint'),
             icon: Icons.business_outlined,
             textInputAction: TextInputAction.next,
-            validatorMessage: 'Organisation obligatoire',
+            validatorMessage: l10n.requiredField(l10n.text('organization')),
           ),
           const SizedBox(height: 14),
           _AuthField(
             controller: emailController,
-            labelText: 'Adresse e-mail',
-            hintText: 'exemple@entreprise.com',
+            labelText: l10n.text('email'),
+            hintText: l10n.text('emailHint'),
             icon: Icons.alternate_email_rounded,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
-            validatorMessage: 'Adresse e-mail obligatoire',
+            validatorMessage: l10n.requiredField(l10n.text('email')),
             onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
           ),
           const SizedBox(height: 18),
           _PrimaryButton(
             isLoading: isLoading,
-            label: 'Recevoir le lien',
+            label: l10n.text('sendResetLink'),
             onPressed: onSubmit,
           ),
         ],

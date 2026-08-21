@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../domain/order_history.dart';
 import '../providers/orders_provider.dart';
@@ -20,6 +21,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final isOnline = ref
         .watch(isOnlineProvider)
         .when(
@@ -33,17 +35,17 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
       child: ref
           .watch(orderHistoryProvider)
           .when(
-            loading: () => const _OrderStateView(
+            loading: () => _OrderStateView(
               icon: Icons.hourglass_top_rounded,
-              title: 'Chargement des commandes',
-              message: 'Veuillez patienter.',
+              title: l10n.text('ordersLoading'),
+              message: l10n.text('pleaseWait'),
               showProgress: true,
             ),
             error: (error, _) => _OrderStateView(
               icon: Icons.wifi_off_rounded,
-              title: 'Impossible de charger les commandes',
+              title: l10n.text('ordersLoadFailed'),
               message: error.toString(),
-              actionLabel: 'Reessayer',
+              actionLabel: l10n.text('retry'),
               onAction: () => ref.invalidate(orderHistoryProvider),
             ),
             data: (orders) => _buildContent(orders, isOnline: isOnline),
@@ -52,6 +54,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
   }
 
   Widget _buildContent(List<CustomerOrder> orders, {required bool isOnline}) {
+    final l10n = context.l10n;
     return RefreshIndicator(
       color: _OrderColors.primary,
       onRefresh: _refreshOrders,
@@ -59,22 +62,19 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (!isOnline)
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               sliver: SliverToBoxAdapter(
-                child: _OrderNotice(
-                  message:
-                      'Historique affiche depuis SQLite. Il sera actualise automatiquement au retour d Internet.',
-                ),
+                child: _OrderNotice(message: l10n.text('ordersOffline')),
               ),
             ),
           if (orders.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               hasScrollBody: false,
               child: _OrderStateView(
                 icon: Icons.assignment_outlined,
-                title: 'Aucune commande',
-                message: 'Tirez vers le bas pour actualiser l historique.',
+                title: l10n.text('noOrders'),
+                message: l10n.text('pullToRefreshOrders'),
               ),
             )
           else
@@ -118,6 +118,7 @@ class _OrderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Material(
       color: _OrderColors.surface,
       borderRadius: BorderRadius.circular(16),
@@ -158,22 +159,22 @@ class _OrderTile extends StatelessWidget {
                 children: [
                   _OrderFact(
                     icon: Icons.event_available_outlined,
-                    label: 'Creation',
+                    label: l10n.text('createdAt'),
                     value: _formatOptionalDate(order.createdAt),
                   ),
                   _OrderFact(
                     icon: Icons.local_shipping_outlined,
-                    label: 'Livraison',
+                    label: l10n.text('delivery'),
                     value: _formatOptionalDate(order.deliveryDate),
                   ),
                   _OrderFact(
                     icon: Icons.payments_outlined,
-                    label: 'Total',
-                    value: order.totalLabel ?? 'Non defini',
+                    label: l10n.text('total'),
+                    value: order.totalLabel ?? l10n.text('notDefined'),
                   ),
                   _OrderFact(
                     icon: Icons.inventory_2_outlined,
-                    label: 'Articles',
+                    label: l10n.text('items'),
                     value: order.orderLines.length.toString(),
                   ),
                 ],
@@ -184,7 +185,7 @@ class _OrderTile extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: onTap,
                   icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: const Text('Voir details'),
+                  label: Text(l10n.text('viewDetails')),
                   style: TextButton.styleFrom(
                     foregroundColor: _OrderColors.primary,
                     textStyle: const TextStyle(fontWeight: FontWeight.w900),
@@ -331,6 +332,7 @@ class _OrderDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final lines = order.orderLines;
 
     return SafeArea(
@@ -377,35 +379,35 @@ class _OrderDetailsSheet extends StatelessWidget {
               const SizedBox(height: 18),
               _DetailRow(
                 icon: Icons.event_available_outlined,
-                label: 'Date de creation',
+                label: l10n.text('createdDate'),
                 value: _formatOptionalDate(order.createdAt),
               ),
               _DetailRow(
                 icon: Icons.local_shipping_outlined,
-                label: 'Date de livraison',
+                label: l10n.text('deliveryDate'),
                 value: _formatOptionalDate(order.deliveryDate),
               ),
               if (order.paymentStatus != null)
                 _DetailStatusRow(
                   icon: Icons.verified_outlined,
-                  label: 'Statut',
+                  label: l10n.text('status'),
                   status: order.paymentStatus!,
                 ),
               _DetailRow(
                 icon: Icons.payments_outlined,
-                label: 'Total',
-                value: order.totalLabel ?? 'Non defini',
+                label: l10n.text('total'),
+                value: order.totalLabel ?? l10n.text('notDefined'),
               ),
               _DetailRow(
                 icon: Icons.inventory_2_outlined,
-                label: 'Nombre d articles',
+                label: l10n.text('itemCount'),
                 value: lines.length.toString(),
               ),
               if (lines.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                const Text(
-                  'Articles',
-                  style: TextStyle(
+                Text(
+                  l10n.text('items'),
+                  style: const TextStyle(
                     color: _OrderColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -522,9 +524,10 @@ class _OrderLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final name =
         _lineText(line, const ['productName', 'name', 'label', 'itemName']) ??
-        'Article';
+        l10n.text('items');
     final reference = _lineText(line, const [
       'productReference',
       'itemReference',
@@ -582,11 +585,11 @@ class _OrderLineTile extends StatelessWidget {
             spacing: 10,
             runSpacing: 4,
             children: [
-              _LineAmount(label: 'Qte', value: quantity),
+              _LineAmount(label: l10n.text('qty'), value: quantity),
               if (unitPrice != null)
-                _LineAmount(label: 'Prix', value: unitPrice),
+                _LineAmount(label: l10n.text('price'), value: unitPrice),
               if (finalPrice != null)
-                _LineAmount(label: 'Total', value: finalPrice),
+                _LineAmount(label: l10n.text('total'), value: finalPrice),
             ],
           ),
         ],
@@ -697,7 +700,7 @@ class _OrderStateView extends StatelessWidget {
 }
 
 String _formatOptionalDate(DateTime? value) {
-  if (value == null) return 'Non defini';
+  if (value == null) return '-';
 
   return '${value.day.toString().padLeft(2, '0')}/'
       '${value.month.toString().padLeft(2, '0')}/'

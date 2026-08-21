@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/network/connectivity_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../cart/domain/cart_item.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../data/catalog_api.dart';
@@ -147,6 +148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final asyncPage = ref.watch(catalogItemsQueryProvider(_itemsQuery()));
     final cart = ref.watch(cartControllerProvider).value;
     final isOnline = ref
@@ -161,10 +163,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       loading: () {
         final page = _lastPage;
         if (page == null) {
-          return const _StateView(
+          return _StateView(
             icon: Icons.hourglass_top_rounded,
-            title: 'Chargement des articles',
-            message: 'Veuillez patienter.',
+            title: l10n.text('loadingItems'),
+            message: l10n.text('pleaseWait'),
             showProgress: true,
           );
         }
@@ -179,9 +181,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
       error: (error, _) => _StateView(
         icon: Icons.wifi_off_rounded,
-        title: 'Impossible de charger les articles',
+        title: l10n.text('itemsLoadFailed'),
         message: error.toString(),
-        actionLabel: 'Reessayer',
+        actionLabel: l10n.text('retry'),
         onAction: () =>
             ref.invalidate(catalogItemsQueryProvider(_itemsQuery())),
       ),
@@ -200,6 +202,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     bool isRefreshing = false,
     bool showLoadingState = false,
   }) {
+    final l10n = context.l10n;
     final initialItems = _mapProducts(page.items);
     final items = _mergeProducts(initialItems, _loadedMoreItems);
     final filters = _buildProductFilters();
@@ -244,22 +247,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             if (!isOnline)
-              const SliverPadding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 sliver: SliverToBoxAdapter(
-                  child: _HomeNotice(
-                    message:
-                        'Catalogue affiche depuis le cache local. Recherche, details et panier restent disponibles.',
-                  ),
+                  child: _HomeNotice(message: l10n.text('catalogOffline')),
                 ),
               ),
             if (showLoadingState)
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
                 child: _StateView(
                   icon: Icons.hourglass_top_rounded,
-                  title: 'Chargement des articles',
-                  message: 'Veuillez patienter.',
+                  title: l10n.text('loadingItems'),
+                  message: l10n.text('pleaseWait'),
                   showProgress: true,
                 ),
               )
@@ -269,9 +269,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: _StateView(
                   icon: Icons.inventory_2_outlined,
                   title: widget.categoryName == null
-                      ? 'Aucun article trouve'
-                      : 'Aucun article dans cette categorie',
-                  message: 'Tirez vers le bas pour actualiser les articles.',
+                      ? l10n.text('noItemsFound')
+                      : l10n.text('noItemsInCategory'),
+                  message: l10n.text('pullToRefreshItems'),
                 ),
               )
             else ...[
@@ -360,9 +360,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Impossible de mettre a jour le panier: $error'),
-        ),
+        SnackBar(content: Text(context.l10n.cartUpdateFailed(error))),
       );
     }
   }
@@ -411,6 +409,7 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final selectedIndex = filters.indexOf(selectedFilter);
     final categoryName = selectedCategoryName?.trim();
     final hasSelectedCategory = categoryName != null && categoryName.isNotEmpty;
@@ -455,7 +454,7 @@ class _HomeHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasSelectedCategory ? categoryName : 'Bienvenue',
+                      hasSelectedCategory ? categoryName : l10n.text('welcome'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -467,8 +466,8 @@ class _HomeHeader extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       hasSelectedCategory
-                          ? 'Articles de cette categorie'
-                          : 'Decouvrez nos produits et profitez des meilleures offres',
+                          ? l10n.text('categoryItems')
+                          : l10n.text('catalogSubtitle'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -520,7 +519,7 @@ class _HomeHeader extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
             decoration: InputDecoration(
-              hintText: 'Rechercher un produit, une categorie...',
+              hintText: l10n.text('searchProducts'),
               hintStyle: const TextStyle(
                 color: _HomeColors.lightMuted,
                 fontSize: 13,
@@ -534,7 +533,7 @@ class _HomeHeader extends StatelessWidget {
               suffixIcon: searchQuery.isEmpty
                   ? null
                   : IconButton(
-                      tooltip: 'Effacer',
+                      tooltip: l10n.text('clear'),
                       onPressed: onClearSearch,
                       icon: const Icon(
                         Icons.close_rounded,
@@ -600,7 +599,7 @@ class _HomeHeader extends StatelessWidget {
                               children: [
                                 Icon(filter.icon, size: 18),
                                 const SizedBox(width: 7),
-                                Text(filter.title),
+                                Text(_filterTitle(context, filter)),
                               ],
                             ),
                           ),
@@ -689,14 +688,14 @@ class _DisplayModeSwitcher extends StatelessWidget {
             mode: _ProductDisplayMode.list,
             selected: selectedMode == _ProductDisplayMode.list,
             icon: Icons.view_list_rounded,
-            tooltip: 'Liste',
+            tooltip: context.l10n.text('list'),
             onSelected: onSelected,
           ),
           _DisplayModeButton(
             mode: _ProductDisplayMode.grid,
             selected: selectedMode == _ProductDisplayMode.grid,
             icon: Icons.grid_view_rounded,
-            tooltip: 'Grille',
+            tooltip: context.l10n.text('grid'),
             onSelected: onSelected,
           ),
         ],
@@ -763,6 +762,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Material(
       color: _HomeColors.surface,
       borderRadius: BorderRadius.circular(18),
@@ -846,7 +846,7 @@ class _ProductCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            item.price ?? 'Prix non defini',
+                            item.price ?? l10n.text('undefinedPrice'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -928,18 +928,25 @@ class _ProductListHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       height: 38,
       color: _HomeColors.softSurface,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: const Row(
+      child: Row(
         children: [
-          SizedBox(width: 34),
-          Expanded(flex: 4, child: _ProductListHeaderText('Nom')),
-          Expanded(flex: 2, child: _ProductListHeaderText('Reference')),
-          Expanded(flex: 2, child: _ProductListHeaderText('Prix')),
-          SizedBox(width: 122, child: _ProductListHeaderText('Quantite')),
-          Expanded(flex: 2, child: _ProductListHeaderText('Unite')),
+          const SizedBox(width: 34),
+          Expanded(flex: 4, child: _ProductListHeaderText(l10n.text('name'))),
+          Expanded(
+            flex: 2,
+            child: _ProductListHeaderText(l10n.text('reference')),
+          ),
+          Expanded(flex: 2, child: _ProductListHeaderText(l10n.text('price'))),
+          SizedBox(
+            width: 122,
+            child: _ProductListHeaderText(l10n.text('quantity')),
+          ),
+          Expanded(flex: 2, child: _ProductListHeaderText(l10n.text('unit'))),
         ],
       ),
     );
@@ -1122,7 +1129,7 @@ class _InlineQuantityStepper extends StatelessWidget {
       children: [
         _InlineQuantityButton(
           icon: Icons.remove_rounded,
-          tooltip: 'Retirer',
+          tooltip: context.l10n.text('remove'),
           onPressed: quantity > 0 ? onDecrement : null,
         ),
         SizedBox(
@@ -1141,7 +1148,7 @@ class _InlineQuantityStepper extends StatelessWidget {
         ),
         _InlineQuantityButton(
           icon: Icons.add_rounded,
-          tooltip: 'Ajouter',
+          tooltip: context.l10n.text('add'),
           onPressed: onIncrement,
         ),
       ],
@@ -1233,7 +1240,7 @@ class _QuantityPopup extends StatelessWidget {
           children: [
             _QuantityButton(
               icon: Icons.remove_rounded,
-              tooltip: 'Retirer',
+              tooltip: context.l10n.text('remove'),
               onPressed: onDecrement,
             ),
             SizedBox(
@@ -1252,7 +1259,7 @@ class _QuantityPopup extends StatelessWidget {
             ),
             _QuantityButton(
               icon: Icons.add_rounded,
-              tooltip: 'Ajouter',
+              tooltip: context.l10n.text('add'),
               onPressed: onIncrement,
             ),
           ],
@@ -1294,9 +1301,9 @@ class _ProductBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = item.isPromo
-        ? 'Promo'
+        ? context.l10n.text('promo')
         : item.isNew
-        ? 'New'
+        ? context.l10n.text('newItem')
         : item.labelName!;
     final color = _productBadgeColor(item);
     final textColor = _productBadgeTextColor(color);
@@ -1404,17 +1411,17 @@ class _LoadMoreFooter extends StatelessWidget {
       return OutlinedButton.icon(
         onPressed: onRetry,
         icon: const Icon(Icons.refresh_rounded),
-        label: const Text('Reessayer'),
+        label: Text(context.l10n.text('retry')),
       );
     }
 
     if (!hasMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: Center(
           child: Text(
-            'Tous les articles sont charges',
-            style: TextStyle(
+            context.l10n.text('allItemsLoaded'),
+            style: const TextStyle(
               color: _HomeColors.lightMuted,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
@@ -1427,7 +1434,7 @@ class _LoadMoreFooter extends StatelessWidget {
     return TextButton.icon(
       onPressed: onRetry,
       icon: const Icon(Icons.expand_more_rounded),
-      label: const Text('Charger plus'),
+      label: Text(context.l10n.text('loadMore')),
     );
   }
 }
@@ -1533,22 +1540,22 @@ class _ProductDetailsSheet extends ConsumerWidget {
             const SizedBox(height: 18),
             _DetailRow(
               icon: Icons.category_outlined,
-              label: 'Categorie',
+              label: context.l10n.text('category'),
               value: item.category,
             ),
             _DetailRow(
               icon: Icons.straighten_rounded,
-              label: 'Unite',
+              label: context.l10n.text('unit'),
               value: item.unit,
             ),
             _DetailRow(
               icon: Icons.qr_code_rounded,
-              label: 'Code barre',
+              label: context.l10n.text('barcode'),
               value: item.barcode,
             ),
             _DetailRow(
               icon: Icons.inventory_rounded,
-              label: 'Stock',
+              label: context.l10n.text('stock'),
               value: item.stock,
             ),
           ],
@@ -1587,9 +1594,7 @@ class _ProductDetailsSheet extends ConsumerWidget {
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Impossible de mettre a jour le panier: $error'),
-        ),
+        SnackBar(content: Text(context.l10n.cartUpdateFailed(error))),
       );
     }
   }
@@ -1801,6 +1806,15 @@ class _ProductFilter {
 
   @override
   int get hashCode => key.hashCode;
+}
+
+String _filterTitle(BuildContext context, _ProductFilter filter) {
+  return switch (filter.key) {
+    'all' => context.l10n.text('all'),
+    'new' => context.l10n.text('newItem'),
+    'promo' => context.l10n.text('promo'),
+    _ => filter.title,
+  };
 }
 
 class _ProductItem {

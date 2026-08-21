@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../domain/cart_item.dart';
@@ -55,12 +56,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     AsyncValue<CustomerCart> cart, {
     required bool isOnline,
   }) {
+    final l10n = context.l10n;
     if (minimum.hasError) {
       return _CartStateView(
         icon: Icons.wifi_off_rounded,
-        title: 'Minimum de commande indisponible',
+        title: l10n.text('minOrderUnavailable'),
         message: minimum.error.toString(),
-        actionLabel: 'Reessayer',
+        actionLabel: l10n.text('retry'),
         onAction: () => ref.invalidate(customerMinOrderTotalProvider),
       );
     }
@@ -68,9 +70,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     if (cart.hasError) {
       return _CartStateView(
         icon: Icons.shopping_cart_outlined,
-        title: 'Panier indisponible',
+        title: l10n.text('cartUnavailable'),
         message: cart.error.toString(),
-        actionLabel: 'Reessayer',
+        actionLabel: l10n.text('retry'),
         onAction: () => ref.invalidate(cartControllerProvider),
       );
     }
@@ -79,10 +81,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final customerCart = cart.value;
 
     if (minimumOrderTotal == null || customerCart == null) {
-      return const _CartStateView(
+      return _CartStateView(
         icon: Icons.hourglass_top_rounded,
-        title: 'Chargement du panier',
-        message: 'Veuillez patienter.',
+        title: l10n.text('loadingCart'),
+        message: l10n.text('pleaseWait'),
         showProgress: true,
       );
     }
@@ -126,6 +128,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cart = widget.cart;
     final missingAmount = (widget.minimumOrderTotal - cart.total).clamp(
       0.0,
@@ -147,19 +150,15 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
           ),
         ),
         if (cart.isEmpty)
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: _EmptyCartView(),
-          )
+          SliverFillRemaining(hasScrollBody: false, child: _EmptyCartView())
         else ...[
           if (!widget.isOnline)
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               sliver: SliverToBoxAdapter(
                 child: _CartNotice(
                   icon: Icons.wifi_off_rounded,
-                  message:
-                      'La commande necessite une connexion Internet pour etre envoyee.',
+                  message: l10n.text('cartOffline'),
                 ),
               ),
             ),
@@ -169,12 +168,13 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
               child: missingAmount > 0
                   ? _CartNotice(
                       icon: Icons.info_rounded,
-                      message:
-                          'Il manque ${_formatDt(missingAmount)} pour atteindre le minimum de commande.',
+                      message: l10n.missingOrderAmount(
+                        _formatDt(missingAmount),
+                      ),
                     )
-                  : const _CartNotice(
+                  : _CartNotice(
                       icon: Icons.check_circle_rounded,
-                      message: 'Le minimum de commande est atteint.',
+                      message: l10n.text('minOrderReached'),
                       success: true,
                     ),
             ),
@@ -240,10 +240,10 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
                       : const Icon(Icons.check_rounded),
                   label: Text(
                     _isSubmitting
-                        ? 'VALIDATION EN COURS'
+                        ? l10n.text('submitting')
                         : !widget.isOnline
-                        ? 'CONNEXION REQUISE'
-                        : 'VALIDER LA COMMANDE',
+                        ? l10n.text('connectionRequired')
+                        : l10n.text('submitOrder'),
                   ),
                 ),
               ),
@@ -270,9 +270,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
 
   Future<void> _confirmSubmitOrder(CustomerCart cart) async {
     if (!widget.isOnline) {
-      _showMessage(
-        'La commande necessite une connexion Internet pour etre envoyee.',
-      );
+      _showMessage(context.l10n.text('cartOffline'));
       return;
     }
 
@@ -280,10 +278,8 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
-          content: const Text(
-            "Souhaitez-vous confirmer l'envoi de votre commande ?",
-          ),
+          title: Text(context.l10n.text('confirmation')),
+          content: Text(context.l10n.text('confirmOrderQuestion')),
           actions: [
             FilledButton(
               style: FilledButton.styleFrom(
@@ -291,7 +287,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Non'),
+              child: Text(context.l10n.text('no')),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -299,7 +295,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Oui'),
+              child: Text(context.l10n.text('yes')),
             ),
           ],
         );
@@ -314,7 +310,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
   Future<void> _submitOrder(CustomerCart cart) async {
     final deliveryDate = _deliveryDate;
     if (deliveryDate == null) {
-      _showMessage('Veuillez selectionner une date de livraison.');
+      _showMessage(context.l10n.text('selectDeliveryDate'));
       return;
     }
 
@@ -348,7 +344,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
       );
     } catch (error) {
       if (!mounted) return;
-      _showMessage('Impossible de valider la commande: $error');
+      _showMessage(context.l10n.format('submitOrderFailed', {'error': error}));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -391,9 +387,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Impossible de mettre a jour le panier: $error'),
-          ),
+          SnackBar(content: Text(context.l10n.cartUpdateFailed(error))),
         );
       }
     }());
@@ -413,6 +407,7 @@ class _SummaryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -423,12 +418,18 @@ class _SummaryPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SummaryRow(label: 'Quantite totale', value: '${cart.itemCount}'),
+          _SummaryRow(
+            label: l10n.text('totalQuantity'),
+            value: '${cart.itemCount}',
+          ),
           const SizedBox(height: 10),
-          _SummaryRow(label: 'Total du panier', value: _formatDt(cart.total)),
+          _SummaryRow(
+            label: l10n.text('cartTotal'),
+            value: _formatDt(cart.total),
+          ),
           const SizedBox(height: 12),
           Text(
-            'Minimum de commande : ${_formatDt(minimumOrderTotal)}',
+            '${l10n.text('minimumOrder')} : ${_formatDt(minimumOrderTotal)}',
             style: const TextStyle(
               color: _CartColors.lightText,
               fontSize: 15,
@@ -438,7 +439,7 @@ class _SummaryPanel extends StatelessWidget {
           if (!cart.isEmpty && missingAmount > 0) ...[
             const SizedBox(height: 6),
             Text(
-              'Reste a ajouter : ${_formatDt(missingAmount)}',
+              '${l10n.text('remainingToAdd')} : ${_formatDt(missingAmount)}',
               style: const TextStyle(
                 color: _CartColors.warning,
                 fontSize: 13,
@@ -469,6 +470,7 @@ class _CheckoutPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -479,27 +481,27 @@ class _CheckoutPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Resume de la commande',
-            style: TextStyle(
+          Text(
+            l10n.text('orderSummary'),
+            style: const TextStyle(
               color: _CartColors.ink,
               fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Informations de livraison',
-            style: TextStyle(
+          Text(
+            l10n.text('deliveryInfo'),
+            style: const TextStyle(
               color: _CartColors.muted,
               fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Date de livraison',
-            style: TextStyle(
+          Text(
+            l10n.text('deliveryDate'),
+            style: const TextStyle(
               color: _CartColors.ink,
               fontSize: 13,
               fontWeight: FontWeight.w900,
@@ -529,9 +531,9 @@ class _CheckoutPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Commentaire',
-            style: TextStyle(
+          Text(
+            l10n.text('comment'),
+            style: const TextStyle(
               color: _CartColors.ink,
               fontSize: 13,
               fontWeight: FontWeight.w900,
@@ -544,12 +546,16 @@ class _CheckoutPanel extends StatelessWidget {
             minLines: 3,
             maxLines: 5,
             textInputAction: TextInputAction.newline,
-            decoration: _fieldDecoration(hintText: 'Commentaire ...'),
+            decoration: _fieldDecoration(hintText: l10n.text('comment')),
           ),
           const SizedBox(height: 16),
           const Divider(height: 1, color: _CartColors.surfaceBorder),
           const SizedBox(height: 14),
-          _SummaryRow(label: 'Total', value: _formatDt(cart.total), dark: true),
+          _SummaryRow(
+            label: l10n.text('total'),
+            value: _formatDt(cart.total),
+            dark: true,
+          ),
         ],
       ),
     );
@@ -569,9 +575,10 @@ class _OrderSuccessDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final organizationName = organization?.trim();
     final companyText = organizationName == null || organizationName.isEmpty
-        ? 'la societe'
+        ? l10n.text('companyFallback')
         : organizationName;
 
     return Dialog(
@@ -600,8 +607,8 @@ class _OrderSuccessDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Commande enregistree',
+              Text(
+                l10n.text('orderSaved'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _CartColors.ink,
@@ -621,8 +628,8 @@ class _OrderSuccessDialog extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'Reference commande',
+                    Text(
+                      l10n.text('orderReference'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _CartColors.muted,
@@ -645,7 +652,7 @@ class _OrderSuccessDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Votre commande sera confirmee apres validation officielle par $companyText.',
+                l10n.orderConfirmedBy(companyText),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: _CartColors.muted,
@@ -671,7 +678,7 @@ class _OrderSuccessDialog extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  child: const Text('Continuer vos achats'),
+                  child: Text(l10n.text('continueShopping')),
                 ),
               ),
             ],
@@ -697,6 +704,7 @@ class _CartLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Material(
       color: _CartColors.surface,
       borderRadius: BorderRadius.circular(16),
@@ -751,13 +759,13 @@ class _CartLineTile extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       _LineAmount(
-                        label: 'Prix',
+                        label: l10n.text('price'),
                         value: item.unitPrice == null
-                            ? item.priceLabel ?? 'Non defini'
+                            ? item.priceLabel ?? l10n.text('notDefined')
                             : _formatDt(item.unitPrice!),
                       ),
                       _LineAmount(
-                        label: 'Sous-total',
+                        label: l10n.text('subtotal'),
                         value: _formatDt(item.lineTotal),
                       ),
                     ],
@@ -770,7 +778,7 @@ class _CartLineTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _LineIconButton(
-                  tooltip: 'Ajouter',
+                  tooltip: l10n.text('add'),
                   icon: Icons.add_rounded,
                   onPressed: onIncrement,
                 ),
@@ -788,13 +796,13 @@ class _CartLineTile extends StatelessWidget {
                   ),
                 ),
                 _LineIconButton(
-                  tooltip: 'Retirer',
+                  tooltip: l10n.text('remove'),
                   icon: Icons.remove_rounded,
                   onPressed: onDecrement,
                 ),
                 const SizedBox(height: 4),
                 _LineIconButton(
-                  tooltip: 'Supprimer',
+                  tooltip: l10n.text('delete'),
                   icon: Icons.delete_outline_rounded,
                   danger: true,
                   onPressed: onRemove,

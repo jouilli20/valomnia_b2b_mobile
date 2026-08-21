@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/l10n/app_localizations.dart';
 import '../../../core/network/connectivity_service.dart';
-import '../providers/auth_provider.dart';
+import '../../../core/presentation/language_selector.dart';
 import '../../catalog/presentation/catalog_screen.dart';
+import '../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -40,16 +42,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connexion Internet requise pour vous authentifier.'),
-        ),
+        SnackBar(content: Text(context.l10n.text('internetRequiredAuth'))),
       );
       return;
     }
 
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     await ref
         .read(authProvider.notifier)
@@ -110,6 +108,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          const Align(
+                            alignment: Alignment.centerRight,
+                            child: LanguageSelector(compact: true),
+                          ),
+                          const SizedBox(height: 12),
                           const _HeroHeader(),
                           const SizedBox(height: 22),
                           _LoginPanel(
@@ -155,6 +158,8 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 26),
       decoration: BoxDecoration(
@@ -195,11 +200,11 @@ class _HeroHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Valomnia B2B',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -209,12 +214,12 @@ class _HeroHeader extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Espace commercial',
+                      l10n.text('loginTagline'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Color(0xD9FFFFFF),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -226,9 +231,9 @@ class _HeroHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 28),
-          const Text(
-            'Connectez-vous à votre compte',
-            style: TextStyle(
+          Text(
+            l10n.text('loginTitle'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 30,
               height: 1.08,
@@ -236,9 +241,9 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Accédez rapidement aux commandes, clients et opérations de vente en gros.',
-            style: TextStyle(
+          Text(
+            l10n.text('loginSubtitle'),
+            style: const TextStyle(
               color: Color(0xE6FFFFFF),
               fontSize: 15.5,
               height: 1.45,
@@ -276,6 +281,8 @@ class _LoginPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -300,8 +307,8 @@ class _LoginPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   isOnline
-                      ? 'Connexion sécurisée'
-                      : 'Connexion Internet requise',
+                      ? l10n.text('securedConnection')
+                      : l10n.text('internetRequired'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -321,38 +328,38 @@ class _LoginPanel extends StatelessWidget {
           _LoginField(
             controller: organisationController,
             enabled: isOnline && !isLoading,
-            labelText: 'Organisation',
-            hintText: 'Nom de votre organisation',
+            labelText: l10n.text('organization'),
+            hintText: l10n.text('organizationHint'),
             icon: Icons.business_outlined,
             textInputAction: TextInputAction.next,
-            validatorMessage: 'Organisation obligatoire',
+            validatorMessage: l10n.requiredField(l10n.text('organization')),
           ),
           const SizedBox(height: 14),
           _LoginField(
             controller: emailController,
             enabled: isOnline && !isLoading,
-            labelText: 'Adresse e-mail',
-            hintText: 'exemple@entreprise.com',
+            labelText: l10n.text('email'),
+            hintText: l10n.text('emailHint'),
             icon: Icons.alternate_email_rounded,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            validatorMessage: 'Adresse e-mail obligatoire',
+            validatorMessage: l10n.requiredField(l10n.text('email')),
           ),
           const SizedBox(height: 14),
           _LoginField(
             controller: passwordController,
             enabled: isOnline && !isLoading,
-            labelText: 'Mot de passe',
-            hintText: 'Votre mot de passe',
+            labelText: l10n.text('password'),
+            hintText: l10n.text('passwordHint'),
             icon: Icons.lock_outline_rounded,
             obscureText: obscurePassword,
             textInputAction: TextInputAction.done,
-            validatorMessage: 'Mot de passe obligatoire',
+            validatorMessage: l10n.requiredField(l10n.text('password')),
             onFieldSubmitted: (_) => isLoading || !isOnline ? null : onSubmit(),
             suffixIcon: IconButton(
               tooltip: obscurePassword
-                  ? 'Afficher le mot de passe'
-                  : 'Masquer le mot de passe',
+                  ? l10n.text('showPassword')
+                  : l10n.text('hidePassword'),
               onPressed: isOnline && !isLoading ? onTogglePassword : null,
               icon: Icon(
                 obscurePassword
@@ -376,7 +383,7 @@ class _LoginPanel extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              child: const Text('Mot de passe oublie ?'),
+              child: Text(l10n.text('forgotPassword')),
             ),
           ),
           const SizedBox(height: 14),
@@ -407,10 +414,13 @@ class _LoginPanel extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
-                      children: [Text('Se connecter'), SizedBox(width: 8)],
+                      children: [
+                        Text(l10n.text('signIn')),
+                        const SizedBox(width: 8),
+                      ],
                     ),
             ),
           ),
@@ -453,15 +463,19 @@ class _LoginOfflineNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFF97316)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.wifi_off_rounded, color: Color(0xFFB45309), size: 20),
-          SizedBox(width: 9),
+          const Icon(
+            Icons.wifi_off_rounded,
+            color: Color(0xFFB45309),
+            size: 20,
+          ),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Authentification indisponible hors ligne. Retablissez Internet pour vous connecter.',
-              style: TextStyle(
+              context.l10n.text('authOffline'),
+              style: const TextStyle(
                 color: Color(0xFF92400E),
                 fontSize: 13,
                 height: 1.3,
@@ -570,14 +584,11 @@ class _SupportPhone extends StatelessWidget {
 
   Future<void> _callSupport(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final phoneOpenFailed = context.l10n.text('phoneOpenFailed');
 
-    if (await launchUrl(_phoneUri)) {
-      return;
-    }
+    if (await launchUrl(_phoneUri)) return;
 
-    messenger.showSnackBar(
-      const SnackBar(content: Text("Impossible d'ouvrir le téléphone.")),
-    );
+    messenger.showSnackBar(SnackBar(content: Text(phoneOpenFailed)));
   }
 
   @override
