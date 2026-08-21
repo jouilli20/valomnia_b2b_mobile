@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../domain/cart_item.dart';
 import '../providers/cart_provider.dart';
@@ -22,13 +23,20 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   Widget build(BuildContext context) {
     final minimum = ref.watch(customerMinOrderTotalProvider);
     final cart = ref.watch(cartControllerProvider);
+    final isOnline = ref
+        .watch(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
 
     return ColoredBox(
       color: _CartColors.background,
       child: RefreshIndicator(
         color: _CartColors.primary,
         onRefresh: _refresh,
-        child: _buildContent(minimum, cart),
+        child: _buildContent(minimum, cart, isOnline: isOnline),
       ),
     );
   }
@@ -44,8 +52,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   Widget _buildContent(
     AsyncValue<double> minimum,
-    AsyncValue<CustomerCart> cart,
-  ) {
+    AsyncValue<CustomerCart> cart, {
+    required bool isOnline,
+  }) {
     if (minimum.hasError) {
       return _CartStateView(
         icon: Icons.wifi_off_rounded,
@@ -81,6 +90,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return _CartSummary(
       cart: customerCart,
       minimumOrderTotal: minimumOrderTotal,
+      isOnline: isOnline,
       onContinueShopping: widget.onContinueShopping,
     );
   }
@@ -90,11 +100,13 @@ class _CartSummary extends ConsumerStatefulWidget {
   const _CartSummary({
     required this.cart,
     required this.minimumOrderTotal,
+    required this.isOnline,
     required this.onContinueShopping,
   });
 
   final CustomerCart cart;
   final double minimumOrderTotal;
+  final bool isOnline;
   final VoidCallback? onContinueShopping;
 
   @override
@@ -119,7 +131,7 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
       0.0,
       double.infinity,
     );
-    final canSubmit = !cart.isEmpty && missingAmount == 0;
+    final canSubmit = !cart.isEmpty && missingAmount == 0 && widget.isOnline;
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -140,6 +152,17 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
             child: _EmptyCartView(),
           )
         else ...[
+          if (!widget.isOnline)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              sliver: SliverToBoxAdapter(
+                child: _CartNotice(
+                  icon: Icons.wifi_off_rounded,
+                  message:
+                      'La commande necessite une connexion Internet pour etre envoyee.',
+                ),
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             sliver: SliverToBoxAdapter(
@@ -218,6 +241,8 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
                   label: Text(
                     _isSubmitting
                         ? 'VALIDATION EN COURS'
+                        : !widget.isOnline
+                        ? 'CONNEXION REQUISE'
                         : 'VALIDER LA COMMANDE',
                   ),
                 ),
@@ -244,6 +269,13 @@ class _CartSummaryState extends ConsumerState<_CartSummary> {
   }
 
   Future<void> _confirmSubmitOrder(CustomerCart cart) async {
+    if (!widget.isOnline) {
+      _showMessage(
+        'La commande necessite une connexion Internet pour etre envoyee.',
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {

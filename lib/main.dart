@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/presentation/offline_status_banner.dart';
 import 'features/auth/presentation/splash_screen.dart';
 
 void main() {
@@ -14,6 +15,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Valomnia B2B',
+      builder: (context, child) {
+        return Column(
+          children: [
+            const OfflineStatusBanner(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4A96E2)),
         useMaterial3: true,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../cart/domain/cart_item.dart';
 import '../../cart/providers/cart_provider.dart';
@@ -148,6 +149,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final asyncPage = ref.watch(catalogItemsQueryProvider(_itemsQuery()));
     final cart = ref.watch(cartControllerProvider).value;
+    final isOnline = ref
+        .watch(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
 
     return asyncPage.when(
       loading: () {
@@ -164,6 +172,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return _buildContent(
           page,
           cart: cart,
+          isOnline: isOnline,
           isRefreshing: true,
           showLoadingState: _lastPageFilter.apiKey != _selectedFilter.apiKey,
         );
@@ -179,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data: (page) {
         _lastPage = page;
         _lastPageFilter = _selectedFilter;
-        return _buildContent(page, cart: cart);
+        return _buildContent(page, cart: cart, isOnline: isOnline);
       },
     );
   }
@@ -187,6 +196,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildContent(
     CatalogItemsPage page, {
     CustomerCart? cart,
+    required bool isOnline,
     bool isRefreshing = false,
     bool showLoadingState = false,
   }) {
@@ -233,6 +243,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
+            if (!isOnline)
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+                sliver: SliverToBoxAdapter(
+                  child: _HomeNotice(
+                    message:
+                        'Catalogue affiche depuis le cache local. Recherche, details et panier restent disponibles.',
+                  ),
+                ),
+              ),
             if (showLoadingState)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -1679,6 +1699,46 @@ class _StateView extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HomeNotice extends StatelessWidget {
+  const _HomeNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF97316)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.wifi_off_rounded,
+            color: Color(0xFFB45309),
+            size: 21,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

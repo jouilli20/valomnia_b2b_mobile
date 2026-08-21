@@ -85,6 +85,37 @@ class CustomerProfile {
       ),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'reference': reference,
+      'reference2': secondaryReference,
+      'name': name,
+      'categoryReference': categoryReference,
+      'sector': sector,
+      'email': email,
+      'phone': phone,
+      'mobile': mobile,
+      'fax': fax,
+      'barcode': barcode,
+      'logo': logoUrl,
+      'organization': organization,
+      'taxNumber': taxNumber,
+      'companyRegistrationNumber': companyRegistrationNumber,
+      'currency': currency,
+      'website': website,
+      'isActive': isActive,
+      'billingAddress': billingAddress.address,
+      'billingCity': billingAddress.city,
+      'billingPostalCode': billingAddress.postalCode,
+      'billingCountry': billingAddress.country,
+      'shippingAddress': shippingAddress.address,
+      'shippingCity': shippingAddress.city,
+      'shippingPostalCode': shippingAddress.postalCode,
+      'shippingCountry': shippingAddress.country,
+    };
+  }
 }
 
 class CustomerAddress {
@@ -120,6 +151,15 @@ class CustomerAddress {
       postalCode: _firstClean(json, postalCodeKeys),
       country: _firstNamed(json, countryKeys),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'address': address,
+      'city': city,
+      'postalCode': postalCode,
+      'country': country,
+    };
   }
 }
 

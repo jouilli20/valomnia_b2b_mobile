@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity_service.dart';
+import '../../../core/storage/local_cache_repository.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../data/catalog_api.dart';
 
@@ -75,10 +78,28 @@ class CatalogItemsQuery {
 
 final categoriesProvider = FutureProvider<List<dynamic>>((ref) async {
   final catalogApi = ref.watch(catalogApiProvider);
+  final onlineStatus = ref.watch(isOnlineProvider);
+  final connectivityService = ref.read(connectivityServiceProvider);
+  final cache = ref.read(localCacheRepositoryProvider);
+  const cacheKey = 'catalog:categories';
 
   log('Loading categories...', name: 'CatalogProvider');
 
-  return await catalogApi.getCategories();
+  if (!await _isOnline(connectivityService, onlineStatus)) {
+    final cachedCategories = await _cachedList(cache, cacheKey);
+    if (cachedCategories != null) return cachedCategories;
+    throw StateError('Aucune categorie disponible hors ligne.');
+  }
+
+  try {
+    final categories = await catalogApi.getCategories();
+    await cache.saveJson(cacheKey, categories);
+    return categories;
+  } catch (error) {
+    final cachedCategories = await _cachedList(cache, cacheKey);
+    if (cachedCategories != null) return cachedCategories;
+    rethrow;
+  }
 });
 
 final catalogProvider = FutureProvider<List<dynamic>>((ref) async {
@@ -90,6 +111,9 @@ final customerMinOrderTotalProvider = FutureProvider.autoDispose<double>((
   ref,
 ) async {
   final catalogApi = ref.read(catalogApiProvider);
+  final onlineStatus = ref.watch(isOnlineProvider);
+  final connectivityService = ref.read(connectivityServiceProvider);
+  final cache = ref.read(localCacheRepositoryProvider);
   final customerId = (await SecureStorageService.getCustomerOrderId())?.trim();
 
   if (customerId == null || customerId.isEmpty) {
@@ -105,7 +129,25 @@ final customerMinOrderTotalProvider = FutureProvider.autoDispose<double>((
     name: 'CatalogProvider',
   );
 
-  return catalogApi.getCustomerMinOrderTotal(customerId: customerId);
+  final cacheKey = 'catalog:min-order-total:$customerId';
+
+  if (!await _isOnline(connectivityService, onlineStatus)) {
+    final cachedMinimum = await cache.readJson(cacheKey);
+    if (cachedMinimum is num) return cachedMinimum.toDouble();
+    return 0;
+  }
+
+  try {
+    final minimum = await catalogApi.getCustomerMinOrderTotal(
+      customerId: customerId,
+    );
+    await cache.saveJson(cacheKey, minimum);
+    return minimum;
+  } catch (_) {
+    final cachedMinimum = await cache.readJson(cacheKey);
+    if (cachedMinimum is num) return cachedMinimum.toDouble();
+    return 0;
+  }
 });
 
 final catalogItemsPageProvider = FutureProvider.family<List<dynamic>, int>((
@@ -152,22 +194,12 @@ Future<CatalogItemsPage> _fetchCatalogItemsPage(
   bool? isPromo,
 }) async {
   final catalogApi = ref.watch(catalogApiProvider);
+  final onlineStatus = ref.watch(isOnlineProvider);
+  final connectivityService = ref.read(connectivityServiceProvider);
+  final cache = ref.read(localCacheRepositoryProvider);
 
   final customerId = (await SecureStorageService.getCustomerId())?.trim();
-
-  log(
-    'CUSTOMER ID = $customerId, offset = $offset, max = $max',
-    name: 'CatalogProvider',
-  );
-
-  if (customerId == null || customerId.isEmpty) {
-    log(
-      'Customer ID not found, loading catalog without customer pricing',
-      name: 'CatalogProvider',
-    );
-  }
-
-  return await catalogApi.getItemsPage(
+  final cacheKey = _catalogItemsCacheKey(
     customerId: customerId,
     offset: offset,
     max: max,
@@ -181,4 +213,105 @@ Future<CatalogItemsPage> _fetchCatalogItemsPage(
     withLabel: withLabel,
     isPromo: isPromo,
   );
+
+  log(
+    'CUSTOMER ID = $customerId, offset = $offset, max = $max',
+    name: 'CatalogProvider',
+  );
+
+  if (customerId == null || customerId.isEmpty) {
+    log(
+      'Customer ID not found, loading catalog without customer pricing',
+      name: 'CatalogProvider',
+    );
+  }
+
+  if (!await _isOnline(connectivityService, onlineStatus)) {
+    final cachedPage = await _cachedItemsPage(cache, cacheKey);
+    if (cachedPage != null) return cachedPage;
+    return CatalogItemsPage.empty(offset: offset, max: max);
+  }
+
+  try {
+    final page = await catalogApi.getItemsPage(
+      customerId: customerId,
+      offset: offset,
+      max: max,
+      sort: sort,
+      order: order,
+      category: category,
+      searchTerm: searchTerm,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      isNew: isNew,
+      withLabel: withLabel,
+      isPromo: isPromo,
+    );
+    await cache.saveJson(cacheKey, _itemsPageJson(page));
+    return page;
+  } catch (_) {
+    final cachedPage = await _cachedItemsPage(cache, cacheKey);
+    if (cachedPage != null) return cachedPage;
+    rethrow;
+  }
+}
+
+Future<bool> _isOnline(
+  ConnectivityService connectivityService,
+  AsyncValue<bool> onlineStatus,
+) async {
+  if (onlineStatus is AsyncData<bool>) return onlineStatus.value;
+  return connectivityService.hasConnection();
+}
+
+Future<List<dynamic>?> _cachedList(
+  LocalCacheRepository cache,
+  String key,
+) async {
+  final cachedValue = await cache.readJson(key);
+  return cachedValue is List ? cachedValue : null;
+}
+
+Future<CatalogItemsPage?> _cachedItemsPage(
+  LocalCacheRepository cache,
+  String key,
+) async {
+  final cachedValue = await cache.readJson(key);
+  if (cachedValue is! Map) return null;
+
+  final items = cachedValue['items'];
+  if (items is! List) return null;
+
+  return CatalogItemsPage(
+    items: items,
+    total: int.tryParse(cachedValue['total']?.toString() ?? '') ?? items.length,
+    offset: int.tryParse(cachedValue['offset']?.toString() ?? '') ?? 0,
+    max: int.tryParse(cachedValue['max']?.toString() ?? '') ?? items.length,
+  );
+}
+
+Map<String, dynamic> _itemsPageJson(CatalogItemsPage page) {
+  return {
+    'items': page.items,
+    'total': page.total,
+    'offset': page.offset,
+    'max': page.max,
+  };
+}
+
+String _catalogItemsCacheKey({
+  required String? customerId,
+  required int offset,
+  required int max,
+  required String? sort,
+  required String? order,
+  required String? category,
+  required String? searchTerm,
+  required String? minPrice,
+  required String? maxPrice,
+  required bool? isNew,
+  required String? withLabel,
+  required bool? isPromo,
+}) {
+  return 'catalog:items:${customerId ?? 'anonymous'}:${jsonEncode({'offset': offset, 'max': max, 'sort': sort, 'order': order, 'category': category, 'searchTerm': searchTerm, 'minPrice': minPrice, 'maxPrice': maxPrice, 'isNew': isNew, 'withLabel': withLabel, 'isPromo': isPromo})}';
 }

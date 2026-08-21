@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../domain/order_history.dart';
 import '../providers/orders_provider.dart';
 
@@ -19,6 +20,14 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref
+        .watch(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
+
     return ColoredBox(
       color: _OrderColors.background,
       child: ref
@@ -37,18 +46,28 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
               actionLabel: 'Reessayer',
               onAction: () => ref.invalidate(orderHistoryProvider),
             ),
-            data: _buildContent,
+            data: (orders) => _buildContent(orders, isOnline: isOnline),
           ),
     );
   }
 
-  Widget _buildContent(List<CustomerOrder> orders) {
+  Widget _buildContent(List<CustomerOrder> orders, {required bool isOnline}) {
     return RefreshIndicator(
       color: _OrderColors.primary,
       onRefresh: _refreshOrders,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          if (!isOnline)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+              sliver: SliverToBoxAdapter(
+                child: _OrderNotice(
+                  message:
+                      'Historique affiche depuis SQLite. Il sera actualise automatiquement au retour d Internet.',
+                ),
+              ),
+            ),
           if (orders.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
@@ -175,6 +194,46 @@ class _OrderTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _OrderNotice extends StatelessWidget {
+  const _OrderNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF97316)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.wifi_off_rounded,
+            color: Color(0xFFB45309),
+            size: 21,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

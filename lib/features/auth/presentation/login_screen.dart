@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../providers/auth_provider.dart';
 import '../../catalog/presentation/catalog_screen.dart';
 import 'forgot_password_screen.dart';
@@ -30,6 +31,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submitLogin() async {
+    final isOnline = ref
+        .read(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
+    if (!isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connexion Internet requise pour vous authentifier.'),
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -47,6 +64,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.isLoading;
+    final isOnline = ref
+        .watch(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
 
     ref.listen(authProvider, (previous, next) {
       next.whenOrNull(
@@ -90,6 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 22),
                           _LoginPanel(
                             isLoading: isLoading,
+                            isOnline: isOnline,
                             organisationController: _organisationController,
                             emailController: _emailController,
                             passwordController: _passwordController,
@@ -229,6 +254,7 @@ class _HeroHeader extends StatelessWidget {
 class _LoginPanel extends StatelessWidget {
   const _LoginPanel({
     required this.isLoading,
+    required this.isOnline,
     required this.organisationController,
     required this.emailController,
     required this.passwordController,
@@ -239,6 +265,7 @@ class _LoginPanel extends StatelessWidget {
   });
 
   final bool isLoading;
+  final bool isOnline;
   final TextEditingController organisationController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -266,16 +293,18 @@ class _LoginPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             children: [
-              _StatusDot(),
-              SizedBox(width: 8),
+              _StatusDot(isOnline: isOnline),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Connexion sécurisée',
+                  isOnline
+                      ? 'Connexion sécurisée'
+                      : 'Connexion Internet requise',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF475569),
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -284,9 +313,14 @@ class _LoginPanel extends StatelessWidget {
               ),
             ],
           ),
+          if (!isOnline) ...[
+            const SizedBox(height: 14),
+            const _LoginOfflineNotice(),
+          ],
           const SizedBox(height: 20),
           _LoginField(
             controller: organisationController,
+            enabled: isOnline && !isLoading,
             labelText: 'Organisation',
             hintText: 'Nom de votre organisation',
             icon: Icons.business_outlined,
@@ -296,6 +330,7 @@ class _LoginPanel extends StatelessWidget {
           const SizedBox(height: 14),
           _LoginField(
             controller: emailController,
+            enabled: isOnline && !isLoading,
             labelText: 'Adresse e-mail',
             hintText: 'exemple@entreprise.com',
             icon: Icons.alternate_email_rounded,
@@ -306,18 +341,19 @@ class _LoginPanel extends StatelessWidget {
           const SizedBox(height: 14),
           _LoginField(
             controller: passwordController,
+            enabled: isOnline && !isLoading,
             labelText: 'Mot de passe',
             hintText: 'Votre mot de passe',
             icon: Icons.lock_outline_rounded,
             obscureText: obscurePassword,
             textInputAction: TextInputAction.done,
             validatorMessage: 'Mot de passe obligatoire',
-            onFieldSubmitted: (_) => isLoading ? null : onSubmit(),
+            onFieldSubmitted: (_) => isLoading || !isOnline ? null : onSubmit(),
             suffixIcon: IconButton(
               tooltip: obscurePassword
                   ? 'Afficher le mot de passe'
                   : 'Masquer le mot de passe',
-              onPressed: onTogglePassword,
+              onPressed: isOnline && !isLoading ? onTogglePassword : null,
               icon: Icon(
                 obscurePassword
                     ? Icons.visibility_outlined
@@ -331,7 +367,7 @@ class _LoginPanel extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: onForgotPassword,
+              onPressed: isOnline && !isLoading ? onForgotPassword : null,
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF2563EB),
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -347,7 +383,7 @@ class _LoginPanel extends StatelessWidget {
           SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
+              onPressed: isLoading || !isOnline ? null : onSubmit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
@@ -385,18 +421,54 @@ class _LoginPanel extends StatelessWidget {
 }
 
 class _StatusDot extends StatelessWidget {
-  const _StatusDot();
+  const _StatusDot({required this.isOnline});
+
+  final bool isOnline;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 10,
       height: 10,
-      decoration: const BoxDecoration(
-        color: Color(0xFF16A34A),
+      decoration: BoxDecoration(
+        color: isOnline ? const Color(0xFF16A34A) : const Color(0xFFF97316),
         shape: BoxShape.circle,
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(color: Color(0x3316A34A), blurRadius: 8, spreadRadius: 2),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginOfflineNotice extends StatelessWidget {
+  const _LoginOfflineNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF97316)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.wifi_off_rounded, color: Color(0xFFB45309), size: 20),
+          SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              'Authentification indisponible hors ligne. Retablissez Internet pour vous connecter.',
+              style: TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                height: 1.3,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -406,6 +478,7 @@ class _StatusDot extends StatelessWidget {
 class _LoginField extends StatelessWidget {
   const _LoginField({
     required this.controller,
+    required this.enabled,
     required this.labelText,
     required this.hintText,
     required this.validatorMessage,
@@ -418,6 +491,7 @@ class _LoginField extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final bool enabled;
   final String labelText;
   final String hintText;
   final String validatorMessage;
@@ -432,6 +506,7 @@ class _LoginField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../domain/customer_profile.dart';
 import '../providers/customer_provider.dart';
@@ -11,6 +12,13 @@ class CustomerProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncProfile = ref.watch(customerProfileProvider);
+    final isOnline = ref
+        .watch(isOnlineProvider)
+        .when(
+          data: (value) => value,
+          loading: () => true,
+          error: (_, _) => true,
+        );
 
     return ColoredBox(
       color: _ProfileColors.background,
@@ -34,7 +42,7 @@ class CustomerProfileScreen extends ConsumerWidget {
             actionLabel: 'Reessayer',
             onAction: () => ref.invalidate(customerProfileProvider),
           ),
-          data: (data) => _ProfileContent(data: data),
+          data: (data) => _ProfileContent(data: data, isOnline: isOnline),
         ),
       ),
     );
@@ -42,9 +50,10 @@ class CustomerProfileScreen extends ConsumerWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.data});
+  const _ProfileContent({required this.data, required this.isOnline});
 
   final CustomerProfileData data;
+  final bool isOnline;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +71,16 @@ class _ProfileContent extends StatelessWidget {
             ),
           ),
         ),
+        if (!isOnline)
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: _OfflineNotice(
+                message:
+                    'Profil affiche depuis le cache local. Les modifications sont disponibles uniquement avec Internet.',
+              ),
+            ),
+          ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           sliver: SliverToBoxAdapter(
@@ -98,7 +117,7 @@ class _ProfileContent extends StatelessWidget {
             child: _SectionPanel(
               title: 'Securite',
               icon: Icons.lock_outline_rounded,
-              child: _PasswordUpdateForm(data: data),
+              child: _PasswordUpdateForm(data: data, isOnline: isOnline),
             ),
           ),
         ),
@@ -260,6 +279,46 @@ class _SectionPanel extends StatelessWidget {
   }
 }
 
+class _OfflineNotice extends StatelessWidget {
+  const _OfflineNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFF97316)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.wifi_off_rounded,
+            color: Color(0xFFB45309),
+            size: 21,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CustomerIdentity extends StatelessWidget {
   const _CustomerIdentity({required this.customer});
 
@@ -354,9 +413,10 @@ class _AddressBlock extends StatelessWidget {
 }
 
 class _PasswordUpdateForm extends ConsumerStatefulWidget {
-  const _PasswordUpdateForm({required this.data});
+  const _PasswordUpdateForm({required this.data, required this.isOnline});
 
   final CustomerProfileData data;
+  final bool isOnline;
 
   @override
   ConsumerState<_PasswordUpdateForm> createState() =>
@@ -380,6 +440,17 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
   }
 
   Future<void> _submit() async {
+    if (!widget.isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Une connexion Internet est requise pour modifier le compte.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final form = _formKey.currentState;
     if (form == null || !form.validate() || _isSubmitting) return;
 
@@ -451,6 +522,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
             controller: _oldPasswordController,
             label: 'Ancien mot de passe',
             hint: 'Entrez votre ancien mot de passe',
+            enabled: widget.isOnline && !_isSubmitting,
             isVisible: _showOldPassword,
             textInputAction: TextInputAction.next,
             onVisibilityChanged: () {
@@ -462,6 +534,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
             controller: _newPasswordController,
             label: 'Nouveau mot de passe',
             hint: 'Entrez votre nouveau mot de passe',
+            enabled: widget.isOnline && !_isSubmitting,
             isVisible: _showNewPassword,
             textInputAction: TextInputAction.done,
             onVisibilityChanged: () {
@@ -481,7 +554,7 @@ class _PasswordUpdateFormState extends ConsumerState<_PasswordUpdateForm> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _isSubmitting ? null : _submit,
+              onPressed: widget.isOnline && !_isSubmitting ? _submit : null,
               icon: _isSubmitting
                   ? const SizedBox(
                       width: 18,
@@ -503,6 +576,7 @@ class _PasswordField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.hint,
+    required this.enabled,
     required this.isVisible,
     required this.onVisibilityChanged,
     required this.textInputAction,
@@ -513,6 +587,7 @@ class _PasswordField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String hint;
+  final bool enabled;
   final bool isVisible;
   final VoidCallback onVisibilityChanged;
   final TextInputAction textInputAction;
@@ -523,6 +598,7 @@ class _PasswordField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       obscureText: !isVisible,
       textInputAction: textInputAction,
       onFieldSubmitted: onSubmitted,
@@ -538,7 +614,7 @@ class _PasswordField extends StatelessWidget {
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         suffixIcon: IconButton(
           tooltip: isVisible ? 'Masquer' : 'Afficher',
-          onPressed: onVisibilityChanged,
+          onPressed: enabled ? onVisibilityChanged : null,
           icon: Icon(
             isVisible
                 ? Icons.visibility_off_outlined

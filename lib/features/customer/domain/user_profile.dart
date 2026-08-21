@@ -49,6 +49,10 @@ class UserProfile {
       email: email ?? fallback.email,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'email': email};
+  }
 }
 
 String? _firstValue(Map<String, dynamic>? source, List<String> keys) {

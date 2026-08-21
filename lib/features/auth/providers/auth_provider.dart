@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
 import '../domain/login_request.dart';
@@ -23,7 +24,13 @@ class AuthNotifier extends Notifier<AsyncValue<LoginResponse?>> {
     state = const AsyncValue.loading();
 
     try {
+      final connectivityService = ref.read(connectivityServiceProvider);
       final repository = ref.read(authRepositoryProvider);
+      final isOnline = await connectivityService.hasConnection();
+      if (!isOnline) {
+        throw StateError('Connexion Internet requise pour vous authentifier.');
+      }
+
       final request = LoginRequest(
         organisation: organisation,
         username: username,
