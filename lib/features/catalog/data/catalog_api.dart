@@ -6,7 +6,9 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/network/dio_client.dart';
 
 class CatalogApi {
-  final Dio _dio = DioClient.dio;
+  CatalogApi({Dio? dio}) : _dio = dio ?? DioClient.dio;
+
+  final Dio _dio;
 
   Future<List<dynamic>> getCategories() async {
     final response = await _dio.get(
@@ -106,9 +108,10 @@ class CatalogApi {
 
     final data = response.data;
     if (data is List) {
+      final items = _withDefaultDeclination(data);
       return CatalogItemsPage(
-        items: data,
-        total: data.length,
+        items: items,
+        total: items.length,
         offset: offset,
         max: max,
       );
@@ -129,9 +132,10 @@ class CatalogApi {
       for (final key in ['data', 'items', 'content', 'results']) {
         final value = data[key];
         if (value is List) {
+          final items = _withDefaultDeclination(value);
           return CatalogItemsPage(
-            items: value,
-            total: total ?? value.length,
+            items: items,
+            total: total ?? items.length,
             offset: responseOffset ?? offset,
             max: responseMax ?? max,
           );
@@ -217,6 +221,12 @@ double _minimumOrderTotalInDt(double value) {
   }
 
   return value;
+}
+
+List<dynamic> _withDefaultDeclination(List<dynamic> items) {
+  return items
+      .map((item) => item is Map ? {...item, 'hasDeclination': false} : item)
+      .toList(growable: false);
 }
 
 class CatalogItemsPage {
